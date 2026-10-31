@@ -1,106 +1,8 @@
 <!DOCTYPE html>
-<!-- ABC INDEX V106 | LIQUID GLASS V105 + GITHUB BRIDGE V106 -->
+<!-- ABC INDEX V107 | LIQUID GLASS V105 + GITHUB BRIDGE V106 + A4 FIT ALL V107 -->
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <!-- =====================================================================
-  ABC SMART FORMS PLUS+ — GITHUB BRIDGE V106
-  -----------------------------------------------------------------------
-  ทำให้ไฟล์นี้รันบน GitHub Pages ได้ โดยยังใช้หลังบ้าน (Code.gs) บน Apps Script เดิม
-  - ถ้าเปิดผ่าน Apps Script ตามเดิม: บล็อกนี้จะไม่ทำงาน (ใช้ google.script.run ของจริง)
-  - ถ้าเปิดจาก GitHub: แปลง google.script.run → fetch() ไปที่ Web App URL ด้านล่าง
-  ===================================================================== -->
-<script id="abcApiConfigV106">
-  /* ▼▼▼ วาง Web App URL ของ Apps Script (ลงท้ายด้วย /exec) ตรงนี้ ▼▼▼ */
-  window.ABC_API_URL = 'https://script.google.com/macros/s/AKfycbxKBnu-Umk9Eu_QocXG1gzUi0KFvrdkGRcorqamIBFWL7nqlwJWodEkdTeOKFPHJsPpSQ/exec';
-  /* ▲▲▲ ------------------------------------------------------------ ▲▲▲ */
-</script>
-<script id="abcGithubBridgeV106">
-(function () {
-  'use strict';
-  if (window.google && window.google.script && window.google.script.run) return; // อยู่บน Apps Script อยู่แล้ว
-
-  var URL_OK = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(String(window.ABC_API_URL || '').trim());
-  var TIMEOUT_MS = 60000;
-
-  function call(fn, args, ok, fail, userObj) {
-    var onFail = function (err) {
-      var e = err instanceof Error ? err : new Error(String(err && err.message || err));
-      if (typeof fail === 'function') fail(e, userObj);
-      else console.error('[ABC API] ' + fn + ':', e);
-    };
-    if (!URL_OK) { onFail(new Error('ยังไม่ได้ตั้งค่า ABC_API_URL (Web App URL ของ Apps Script)')); return; }
-
-    var payload;
-    try { payload = JSON.stringify({ fn: fn, args: args }); }
-    catch (e) { onFail(new Error('ส่งข้อมูลไปเซิร์ฟเวอร์ไม่ได้: ' + e.message)); return; }
-
-    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, TIMEOUT_MS);
-
-    fetch(String(window.ABC_API_URL).trim(), {
-      method: 'POST',
-      /* text/plain = ไม่มี CORS preflight (Apps Script ไม่รองรับ OPTIONS) */
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: payload,
-      redirect: 'follow',
-      signal: ctrl ? ctrl.signal : undefined
-    })
-      .then(function (r) {
-        if (!r.ok) throw new Error('เซิร์ฟเวอร์ตอบกลับผิดพลาด (HTTP ' + r.status + ')');
-        return r.text();
-      })
-      .then(function (txt) {
-        var res;
-        try { res = JSON.parse(txt); }
-        catch (e) { throw new Error('เซิร์ฟเวอร์ไม่ได้ตอบเป็น JSON — ตรวจว่า Deploy แบบ "Anyone" และวาง Api.gs แล้ว'); }
-        if (res && res.__error) throw new Error(res.__error);
-        clearTimeout(timer);
-        if (typeof ok === 'function') ok(res ? res.result : res, userObj);
-      })
-      .catch(function (err) {
-        clearTimeout(timer);
-        if (err && err.name === 'AbortError') err = new Error('เชื่อมต่อเซิร์ฟเวอร์นานเกินไป กรุณาลองใหม่');
-        else if (err instanceof TypeError) err = new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
-        onFail(err);
-      });
-  }
-
-  /* เลียนแบบ google.script.run: .withSuccessHandler().withFailureHandler().withUserObject().ชื่อฟังก์ชัน(...) */
-  function runner(ok, fail, userObj) {
-    return new Proxy({}, {
-      get: function (_, key) {
-        if (key === 'withSuccessHandler') return function (h) { return runner(h, fail, userObj); };
-        if (key === 'withFailureHandler') return function (h) { return runner(ok, h, userObj); };
-        if (key === 'withUserObject') return function (o) { return runner(ok, fail, o); };
-        if (typeof key !== 'string' || key === 'then' || key === 'toJSON') return undefined;
-        return function () { call(key, Array.prototype.slice.call(arguments), ok, fail, userObj); };
-      }
-    });
-  }
-
-  window.google = window.google || {};
-  window.google.script = {
-    get run() { return runner(null, null, undefined); },
-    host: { close: function () {}, setHeight: function () {}, setWidth: function () {}, editor: {} }
-  };
-  window.__ABC_ON_GITHUB__ = true;
-
-  if (!URL_OK) {
-    document.addEventListener('DOMContentLoaded', function () {
-      var b = document.createElement('div');
-      b.className = 'no-print';
-      b.setAttribute('role', 'alert');
-      b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:30000;padding:12px 16px;border-radius:14px;' +
-        'background:#fff3cd;color:#664d03;border:1px solid #ffe69c;font:500 13px Prompt,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.15)';
-      b.textContent = '⚠️ ยังไม่ได้ตั้งค่า ABC_API_URL ใน index.html — วาง Web App URL ของ Apps Script (ลงท้าย /exec) แล้วอัปโหลดใหม่';
-      document.body.appendChild(b);
-    });
-  }
-})();
-</script>
-<!-- ========================= END GITHUB BRIDGE V106 ========================= -->
-
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ABC Smart Forms Plus+ | Digital Forms Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -33325,6 +33227,234 @@ if(typeof buildFundPrintV35==='function'){
 })();
 </script>
 <!-- ========================= END LIQUID GLASS UI V105 ========================= -->
+
+
+<!-- =====================================================================
+  ABC SMART FORMS PLUS+ — A4 FIT ALL V107
+  -----------------------------------------------------------------------
+  1) พิมพ์/บันทึก PDF: ทุกฟอร์มไม่เลยขอบ A4 (กว้างเกิน → ย่อพอดี)
+     ถ้ายาวเกินหน้าเล็กน้อย (≤ 18%) → ย่อให้จบ 1 หน้า ไม่ให้ลายเซ็นหลุดไปหน้า 2
+     ถ้ายาวมากจริง (รายการเยอะ) → ขึ้นหน้าใหม่ตามปกติ แต่ไม่ตัดแถวกลางตาราง
+     (แบบ กง.1 และใบกองทุน ใช้ระบบ V104 เดิม)
+  2) โหมดดูตัวอย่าง: กระดาษย่อพอดีจอ (มือถือ/แท็บเล็ต) + แถบปุ่มพิมพ์ไม่บังเอกสาร
+  ถอดออก: ลบตั้งแต่บรรทัดนี้ ถึง "END A4 FIT ALL V107"
+  ===================================================================== -->
+<style id="abcA4FitAllV107">
+@media screen {
+  body.in-preview .lg-a4-zoom{transform-origin:top center}
+  @media (max-width:1199.98px){
+    body.in-preview #previewControls{
+      position:fixed!important;top:auto!important;right:10px!important;left:10px!important;
+      bottom:max(10px,env(safe-area-inset-bottom,0px))!important;margin:0!important;width:auto!important;max-width:560px;
+      margin-inline:auto!important;padding:8px!important;border-radius:20px!important;
+      display:flex!important;gap:8px;align-items:stretch;flex-wrap:nowrap;
+      background:rgba(255,255,255,.88)!important;border:1px solid rgba(0,0,0,.08)!important;
+      box-shadow:0 12px 40px -10px rgba(0,0,0,.35)!important}
+    body.in-preview #previewControls.hidden{display:none!important}
+    body.in-preview #previewControls h6,body.in-preview #previewControls hr{display:none!important}
+    body.in-preview #previewControls .btn{flex:1 1 0;margin:0!important;width:auto!important;min-height:44px;
+      font-size:13px!important;padding:6px 8px!important;white-space:nowrap;border-radius:14px!important}
+    body.in-preview{padding-bottom:96px!important}
+  }
+  @media (max-width:420px){
+    body.in-preview #previewControls .btn{font-size:12px!important;padding:6px 4px!important}
+  }
+}
+</style>
+<script id="abcA4FitAllV107">
+(function () {
+  'use strict';
+  if (window.__abcA4FitAllV107) return;
+  window.__abcA4FitAllV107 = true;
+
+  var MM = 96 / 25.4;
+  var SKIP = { dashboardView: 1, fundFormView: 1 };          // ดูแลโดย V104
+  var PAGE_SEL = '.masterv8-page,.a4v3-page,.certv6-page,.ps-print-page,.a4-print-page,.a4-flow-document,.legacy-print-page-v35,.travel-print-page-v37';
+  var SHRINK_MAX = 0.18;
+  var SAFE_MM = 4;                                             // เผื่อท้ายกระดาษ 4 มม. กันบรรทัดสุดท้ายล้นไปหน้าใหม่                                       // ย่อให้จบหน้าเดียวได้ไม่เกิน 18%
+  function view() { try { return currentActiveView; } catch (e) { return ''; } }
+  function setImp(el, p, v) { if (el) el.style.setProperty(p, v, 'important'); }
+
+  /* ================= 1) หน้าพิมพ์ ================= */
+  var PRINT_CSS =
+    '\n/* A4 FIT ALL V107 */\n' +
+    'img,svg,canvas{max-width:100%!important;height:auto}' +
+    'table{max-width:100%!important}' +
+    'tr,img,.signature-line{break-inside:avoid;page-break-inside:avoid}' +
+    'thead{display:table-header-group}' +
+    'h1,h2,h3,h4,h5,h6{break-after:avoid;page-break-after:avoid}' +
+    '[data-a4v107="flow"]{zoom:1}';
+
+  if (typeof getPrintStylesV11 === 'function' && !getPrintStylesV11.__a4FitAllV107) {
+    var prevStyles = getPrintStylesV11;
+    var ws = function () { return prevStyles.apply(this, arguments) + (SKIP[view()] ? '' : PRINT_CSS); };
+    ws.__a4FitAllV107 = true;
+    for (var k in prevStyles) if (Object.prototype.hasOwnProperty.call(prevStyles, k)) ws[k] = prevStyles[k];
+    getPrintStylesV11 = ws;
+  }
+
+  function fitAll(doc, marginMm) {
+    var pages = Array.prototype.slice.call(doc.querySelectorAll(PAGE_SEL))
+      .filter(function (p) { return !p.parentElement.closest(PAGE_SEL); });
+    if (!pages.length && doc.body) pages = [doc.body];
+    var widthMm = 210 - marginMm * 2;
+    var availW = widthMm * MM, availH = (297 - marginMm * 2 - SAFE_MM) * MM;
+
+    pages.forEach(function (page) {
+      setImp(page, 'zoom', '1');
+      if (page !== doc.body) { setImp(page, 'width', widthMm + 'mm'); setImp(page, 'max-width', widthMm + 'mm'); }
+      setImp(page, 'box-sizing', 'border-box');
+      var w = page.scrollWidth, h = page.scrollHeight;
+      var zw = w > availW + 1 ? availW / w : 1;
+      var z = zw, mode = zw < 1 ? 'width' : 'ok';
+      if (pages.length === 1 && h * zw > availH + 2) {
+        var zh = availH / h;
+        if (zh >= 1 - SHRINK_MAX) { z = Math.min(zw, zh); mode = 'shrink'; }
+        else mode = 'flow';
+      }
+      if (z < 1) {
+        setImp(page, 'zoom', String(Math.floor(z * 1000) / 1000));
+        if (page !== doc.body) { setImp(page, 'width', (widthMm / z) + 'mm'); setImp(page, 'max-width', (widthMm / z) + 'mm'); }
+      }
+      page.setAttribute('data-a4v107', mode);
+    });
+  }
+
+  /* แบบ กง.1 / ใบกองทุน: หลัง V104 จัดหน้าแล้ว ตรวจซ้ำว่าไม่ล้น ถ้าล้นย่อเพิ่มเล็กน้อย */
+  function safetyFit(doc, marginMm) {
+    var page = doc.querySelector('.legacy-print-page-v35'); if (!page) return;
+    var availH = (297 - marginMm * 2 - SAFE_MM) * MM;
+    var z = parseFloat(page.style.zoom || getComputedStyle(page).zoom || '1') || 1;
+    var h = page.scrollHeight * z;
+    if (h > availH) {
+      var nz = Math.max(0.55, z * availH / h);
+      setImp(page, 'zoom', String(Math.floor(nz * 1000) / 1000));
+      page.setAttribute('data-a4v107', 'safety');
+    }
+  }
+
+  /* โหลดฟอนต์ Prompt ให้เสร็จก่อนวัดหน้า (เดิมวัดตอนฟอนต์ยังไม่มา → พิมพ์จริงยาวเกิน A4) */
+  function preloadFonts(frame) {
+    var win = frame && frame.contentWindow; if (!win) return;
+    var go = function () {
+      try {
+        var fs = win.document.fonts; if (!fs || !fs.load) return;
+        ['300', '400', '500', '600', '700'].forEach(function (w) {
+          fs.load(w + ' 12px "Prompt"', 'กขคงจABC123');
+          fs.load('italic ' + w + ' 12px "Prompt"', 'ก').catch(function () {});
+        });
+      } catch (e) {}
+    };
+    if (win.document.readyState === 'complete') go();
+    else frame.addEventListener('load', go, { once: true });
+  }
+
+  /* ตั้งกรอบวัดให้เท่าพื้นที่พิมพ์จริง (A4 ลบขอบกระดาษ) — เดิมวัดที่ 210 มม. เต็ม ทำให้ตัวเลขผิด */
+  function matchPrintArea(frame, marginMm) {
+    try {
+      frame.style.width = (210 - marginMm * 2) + 'mm';
+      frame.style.height = (297 - marginMm * 2) + 'mm';
+      void frame.contentDocument.body.offsetHeight;
+    } catch (e) {}
+  }
+
+  if (typeof openIsolatedPrintWindowV11 === 'function' && !openIsolatedPrintWindowV11.__a4FitAllV107) {
+    var prevOpen = openIsolatedPrintWindowV11;
+    var wo = function () {
+      var frame = prevOpen.apply(this, arguments);
+      preloadFonts(frame);
+      try {
+        var v = view(), win = frame && frame.contentWindow;
+        if (win && SKIP[v]) {
+          var mm = 9;
+          try { mm = getPrintLayoutProfileV34(v).marginMm || mm; } catch (e) {}
+          var v104Print = win.print, natPrint = Window.prototype.print ? function () { return Window.prototype.print.call(win); } : null;
+          win.print = function () {
+            matchPrintArea(frame, mm);
+            var userCap = window.__abcA4CaptureV104;
+            window.__abcA4CaptureV104 = function (doc) {
+              window.__abcA4CaptureV104 = userCap;
+              try { safetyFit(doc, mm); } catch (e) { console.warn('[A4 FIT ALL V107] safety', e); }
+              if (typeof userCap === 'function') return userCap(doc);
+              return natPrint ? natPrint() : undefined;
+            };
+            try { return v104Print.apply(win, arguments); }
+            finally { window.__abcA4CaptureV104 = userCap; }
+          };
+        }
+        if (win && !SKIP[v]) {
+          var marginMm = 12.7;
+          try { marginMm = getPrintLayoutProfileV34(v).marginMm || marginMm; } catch (e) {}
+          var nativePrint = win.print.bind(win);
+          win.print = function () {
+            matchPrintArea(frame, marginMm);
+            try { fitAll(win.document, marginMm); }
+            catch (e) { console.warn('[A4 FIT ALL V107] จัดหน้าไม่สำเร็จ พิมพ์แบบเดิม:', e); }
+            if (typeof window.__abcA4CaptureV104 === 'function') return window.__abcA4CaptureV104(win.document);
+            return nativePrint();
+          };
+        }
+      } catch (e) { console.warn('[A4 FIT ALL V107]', e); }
+      return frame;
+    };
+    wo.__a4FitAllV107 = true;
+    wo.__a4FitV104 = !!prevOpen.__a4FitV104;
+    openIsolatedPrintWindowV11 = wo;
+  }
+
+  /* ================= 2) โหมดดูตัวอย่าง: ย่อกระดาษพอดีจอ ================= */
+  var zoomed = [];
+  function clearZoom() { zoomed.forEach(function (el) { el.style.removeProperty('zoom'); el.classList.remove('lg-a4-zoom'); }); zoomed = []; }
+  /* รายงานนอกพื้นที่: ใช้ CSS ชุดเดียวกับหน้าพิมพ์ในโหมดดูตัวอย่างด้วย (เดิมบนจอไม่มีรูปแบบ) */
+  function travelPreviewCss() {
+    var v = view();
+    if (!/^travel(Solo|Group)View$/.test(v) || typeof getPrintStylesV11 !== 'function') return;
+    var el = document.getElementById('abcTravelPreviewV107');
+    if (el && el.getAttribute('data-v') === v) return;
+    var css = String(getPrintStylesV11() || '');
+    var a = css.indexOf('OUT-OF-AREA WORK REPORT PRINT V37'), b = css.indexOf('MASTER V8', a);
+    if (a < 0) return;
+    a = css.lastIndexOf('/*', a); b = b > 0 ? css.lastIndexOf('/*', b) : css.length;
+    var part = css.slice(a, b);
+    if (!el) { el = document.createElement('style'); el.id = 'abcTravelPreviewV107'; document.head.appendChild(el); }
+    el.setAttribute('data-v', v);
+    el.textContent = '@media screen{body.in-preview #a4PaginationRoot{--print-font:"Prompt",sans-serif;\n' + part + '\n}}';
+  }
+
+  function fitPreview() {
+    clearZoom();
+    if (!document.body.classList.contains('in-preview')) return;
+    try { travelPreviewCss(); } catch (e) { console.warn('[A4 FIT ALL V107] travel preview', e); }
+    var v = null;
+    ['a4PaginationRoot', view()].some(function (id) {
+      var el = id && document.getElementById(id);
+      if (el && !el.classList.contains('hidden') && el.getBoundingClientRect().width > 0) { v = el; return true; }
+      return false;
+    });
+    if (!v) return;
+    var avail = Math.min(window.innerWidth, document.documentElement.clientWidth) - 16;
+    var need = v.scrollWidth;
+    Array.prototype.forEach.call(v.querySelectorAll('.card,.fund-paper,.lg-paper,table'), function (el) {
+      if (el.offsetParent !== null) need = Math.max(need, el.scrollWidth + (el.getBoundingClientRect().left - v.getBoundingClientRect().left));
+    });
+    if (need > avail + 1) {
+      var z = Math.max(0.3, avail / need);
+      v.style.setProperty('zoom', String(Math.floor(z * 1000) / 1000));
+      v.classList.add('lg-a4-zoom'); zoomed.push(v);
+    }
+  }
+  var t = null;
+  function later() { clearTimeout(t); t = setTimeout(fitPreview, 60); }
+  new MutationObserver(later).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('resize', later);
+  window.addEventListener('orientationchange', later);
+  window.addEventListener('beforeprint', clearZoom);
+  window.addEventListener('afterprint', later);
+
+  console.log('[A4 FIT ALL V107] พร้อมใช้งาน');
+})();
+</script>
+<!-- ========================= END A4 FIT ALL V107 ========================= -->
 
 </body>
 
