@@ -33641,6 +33641,17 @@ if(typeof buildFundPrintV35==='function'){
   .plv-empty{padding:28px 10px;text-align:center;color:var(--lg-muted,#6f6478)}
   .plv-save{background:linear-gradient(120deg,var(--lg-brand,#c2185b),var(--lg-brand-2,#7c3aed))!important;color:#fff!important;border:0!important}
 }
+@media screen{
+  /* การ์ดกระดาษ & คาร์บอน บนแถบทักทาย */
+  .aur-today .lg-carbon{position:relative;overflow:hidden}
+  .aur-today .lg-carbon::after{content:"🌱";position:absolute;right:12px;top:10px;font-size:20px;opacity:.85}
+  .aur-today .lg-carbon b{display:block;padding-right:28px}
+  .aur-today .lg-carbon .lgc-sub{display:block;font-size:11.5px;color:var(--lg-muted,#6f6478);margin-top:3px;line-height:1.5}
+  .aur-today .lg-carbon .lgc-sub em{font-style:normal;color:var(--lg-ok,#0f7a52);font-weight:600}
+  .aur-today .lg-carbon.lgc-click{cursor:pointer}
+  .aur-today .lg-carbon.lgc-click:hover{border-color:var(--lg-ok,#0f7a52)!important}
+  html[data-lg-theme] .aur-today .lg-carbon{background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(16,185,129,.03))!important;border-color:rgba(16,185,129,.35)!important}
+}
 @media print{#plv108{display:none!important}}
 </style>
 <script id="abcPrintLogScriptV108">
@@ -33756,7 +33767,7 @@ if(typeof buildFundPrintV35==='function'){
       event: 'print', pages: pages, changedFields: changed.slice(0, 25),
       client: window.__ABC_ON_GITHUB__ ? 'github' : 'appsscript', at: new Date().toISOString()
     };
-    send(p, function (ok) { if (!ok) enqueue(p); else flush(); });
+    send(p, function (ok) { if (!ok) enqueue(p); else { flush(); heroAt = 0; } });
   }
 
   /* ใช้ได้กับ checklist ในอนาคต: window.abcLogPreventedV108(จำนวนหน้า) */
@@ -33894,6 +33905,60 @@ if(typeof buildFundPrintV35==='function'){
     if (typeof closeAppSidebarMobile === 'function') try { closeAppSidebarMobile(); } catch (e) {}
     var w = panel(); w.hidden = false; load();
   };
+
+
+  /* ================= การ์ดบนแถบทักทาย (ทุกคน) ================= */
+  var heroBusy = false, heroAt = 0;
+  function fmtKg(kg) { kg = Number(kg || 0); return kg < 1 ? nf(kg * 1000, 0) + ' gCO₂e' : nf(kg, 2) + ' kgCO₂e'; }
+  function heroCard() {
+    var today = document.querySelector('#aurHero .aur-today');
+    if (!today) return null;
+    var c = $('lgCarbonCard');
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'lgCarbonCard'; c.className = 'lg-carbon'; c.hidden = true;
+      c.setAttribute('aria-live', 'polite');
+      today.appendChild(c);
+    }
+    return c;
+  }
+  function refreshHero(force) {
+    var hv = $('homeMenuView');
+    if (!hv || hv.classList.contains('hidden') || !token()) return;
+    if (heroBusy || (!force && Date.now() - heroAt < 60000)) return;
+    var c = heroCard(); if (!c) return;
+    heroBusy = true;
+    google.script.run
+      .withSuccessHandler(function (r) {
+        heroBusy = false; heroAt = Date.now();
+        if (!r || !r.success) { c.hidden = true; if (r && r.message) console.warn('[PRINT LOG V108] การ์ดคาร์บอน:', r.message); return; }
+        var m = r.mine, o = r.org;
+        var main = m.sheets
+          ? 'ของฉัน ' + nf(m.sheets) + ' แผ่น · ' + fmtKg(m.co2_kg)
+          : 'ปีงบนี้ยังไม่ได้พิมพ์เลย';
+        var sub = [];
+        if (m.sheets_edit) sub.push('พิมพ์ซ้ำเพราะแก้ไข ' + nf(m.sheets_edit) + ' แผ่น');
+        if (m.sheets_prevented) sub.push('<em>ลดได้ ' + nf(m.sheets_prevented) + ' แผ่น</em>');
+        sub.push('ทั้งระบบ ' + nf(o.sheets) + ' แผ่น' + (o.sheets_prevented ? ' · <em>ลดได้ ' + fmtKg(o.co2_saved_kg) + '</em>' : ''));
+        c.innerHTML = '<small>กระดาษ &amp; คาร์บอน · ปีงบ ' + r.fiscalYear + '</small><b>' + main + '</b><span class="lgc-sub">' + sub.join(' · ') + '</span>';
+        c.title = '1 แผ่น ≈ ' + r.gPerSheet + ' gCO₂e (EF อบก.)' + (r.isAdmin ? ' · คลิกเพื่อดูสถิติทั้งหมด' : '');
+        c.classList.toggle('lgc-click', !!r.isAdmin);
+        c.onclick = r.isAdmin ? function () { window.openPrintStatsV108(); } : null;
+        if (r.isAdmin) { c.setAttribute('role', 'button'); c.tabIndex = 0; c.onkeydown = function (e) { if (e.key === 'Enter') window.openPrintStatsV108(); }; }
+        c.hidden = false;
+      })
+      .withFailureHandler(function (e) { heroBusy = false; heroAt = Date.now(); c.hidden = true; console.warn('[PRINT LOG V108] การ์ดคาร์บอน:', e && e.message || e); })
+      .getMyPrintSummaryV108(token());
+  }
+  window.refreshPrintHeroV108 = refreshHero;
+  (function watchHome() {
+    var hv = $('homeMenuView'); if (!hv) return;
+    new MutationObserver(function () { if (!hv.classList.contains('hidden')) setTimeout(function () { refreshHero(false); }, 300); })
+      .observe(hv, { attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(function () { if (document.body.classList.contains('app-shell-ready')) setTimeout(function () { refreshHero(false); }, 800); })
+      .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    setTimeout(function () { refreshHero(false); }, 1500);
+  })();
 
   /* ปุ่มในเมนูผู้ดูแลระบบ (แสดงเฉพาะ Admin เพราะอยู่ในส่วน adminSidebarSection เดิม) */
   (function addMenu() {
