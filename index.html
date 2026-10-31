@@ -33487,18 +33487,24 @@ if(typeof buildFundPrintV35==='function'){
         if (win && SKIP[v]) {
           var mm = 9;
           try { mm = getPrintLayoutProfileV34(v).marginMm || mm; } catch (e) {}
-          var v104Print = win.print, natPrint = Window.prototype.print ? function () { return Window.prototype.print.call(win); } : null;
+          var v104Print = win.print;
+          /* ตรวจซ้ำหลัง V104 จัดหน้า: ทำใน beforeprint (เบราว์เซอร์ใช้ผลนี้พิมพ์จริง) ไม่แตะคำสั่งพิมพ์ของ V104 */
+          win.addEventListener('beforeprint', function () {
+            try { safetyFit(win.document, mm); } catch (e) { console.warn('[A4 FIT ALL V107] safety', e); }
+          });
           win.print = function () {
             matchPrintArea(frame, mm);
             var userCap = window.__abcA4CaptureV104;
-            window.__abcA4CaptureV104 = function (doc) {
-              window.__abcA4CaptureV104 = userCap;
-              try { safetyFit(doc, mm); } catch (e) { console.warn('[A4 FIT ALL V107] safety', e); }
-              if (typeof userCap === 'function') return userCap(doc);
-              return natPrint ? natPrint() : undefined;
-            };
-            try { return v104Print.apply(win, arguments); }
-            finally { window.__abcA4CaptureV104 = userCap; }
+            if (typeof userCap === 'function') {          /* ใช้เฉพาะตอนทดสอบระบบ */
+              window.__abcA4CaptureV104 = function (doc) {
+                window.__abcA4CaptureV104 = userCap;
+                try { safetyFit(doc, mm); } catch (e) {}
+                return userCap(doc);
+              };
+              try { return v104Print.apply(win, arguments); }
+              finally { window.__abcA4CaptureV104 = userCap; }
+            }
+            return v104Print.apply(win, arguments);
           };
         }
         if (win && !SKIP[v]) {
