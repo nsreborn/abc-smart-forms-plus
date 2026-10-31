@@ -34071,12 +34071,13 @@ if(typeof buildFundPrintV35==='function'){
     if (cached && cached.url) apply(cached.url);
     else if (cached && cached.none) apply('');
     if (!force && loadedFor === u) return;
-    if (!force && cached && Date.now() - cached.at < TTL) { loadedFor = u; return; }
+    if (!force && cached && Date.now() - cached.at < (cached.none ? 10 * 60e3 : TTL)) { loadedFor = u; return; }   // ไม่พบรูป: ลองใหม่ทุก 10 นาที
     busy = true;
     google.script.run
       .withSuccessHandler(function (r) {
         busy = false; loadedFor = u;
-        if (!r || !r.success) { if (r && r.message) console.warn('[PROFILE PHOTO V109]', r.message); return; }
+        if (!r || !r.success) { console.warn('[PROFILE PHOTO V109] โหลดรูปไม่สำเร็จ:', r && r.message); return; }
+        console.log('[PROFILE PHOTO V109]', r.found ? 'พบรูป (ตรง ' + r.score + '%)' : 'ไม่พบรูปที่ตรงกับชื่อ (' + (r.status || '-') + ')');
         if (r.found && r.dataUrl) {
           apply(r.dataUrl);
           var v = JSON.stringify({ at: Date.now(), url: r.dataUrl, id: r.fileId });
