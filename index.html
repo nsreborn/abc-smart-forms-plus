@@ -34101,7 +34101,7 @@ if(typeof buildFundPrintV35==='function'){
   setTimeout(function () { load(false); }, 1200);
 
   /* ================= Admin: รายงานจับคู่รูป ================= */
-  var LABEL = { matched: '✓ จับคู่แล้ว', weak: 'ชื่อไม่ครบ', ambiguous: 'กำกวม', shared: 'ไฟล์ซ้ำหลายคน', none: 'ไม่พบรูป' };
+  var LABEL = { matched: '✓ จับคู่แล้ว', weak: 'ชื่อไม่ชัด', ambiguous: 'กำกวม', shared: 'ไฟล์ซ้ำหลายคน', none: 'ไม่พบรูป' };
   var report = null, filter = 'all';
   function panel() {
     var w = $('ppv109'); if (w) return w;
@@ -34112,7 +34112,7 @@ if(typeof buildFundPrintV35==='function'){
       '<button type="button" id="ppRescan">↻ สแกนโฟลเดอร์ใหม่</button><button type="button" id="ppClose" aria-label="ปิด" style="width:40px;padding:0">✕</button></div></div>' +
       '<div class="ppchips" id="ppChips"></div><div id="ppBody" class="ppbox"><div class="ppempty">กำลังโหลด…</div></div>' +
       '<div class="ppnote">วิธีแก้: ตั้งชื่อไฟล์ใน Drive เป็น <b>ชื่อ นามสกุล</b> ให้ตรงกับในระบบ เช่น <code>ณัฐวัฒน์ สุวรรณพันธ์.jpg</code> หรือใช้ <b>username</b> เช่น <code>nattawat.jpg</code> ' +
-      '(คำนำหน้า นาย/นาง/ผศ.ดร. และเลขลำดับหน้าไฟล์ ระบบตัดให้เอง) · ไฟล์ที่มี<b>แค่ชื่อต้น</b>จะไม่ถูกใช้ เพื่อกันรูปผิดคน · แก้ชื่อไฟล์แล้วกด "สแกนโฟลเดอร์ใหม่"</div></div>';
+      '(คำนำหน้า นาย/นาง/ผศ.ดร. และเลขลำดับหน้าไฟล์ ระบบตัดให้เอง) · ไฟล์ที่มี<b>แค่ชื่อต้น</b>ใช้ได้ ถ้าไม่มีไฟล์ชื่อต้นซ้ำ — ถ้าไฟล์เดียวตรงกับหลายคน ระบบงดใช้ไฟล์นั้นให้อัตโนมัติ (สถานะ "ไฟล์ซ้ำหลายคน") · แก้ชื่อไฟล์แล้วกด "สแกนโฟลเดอร์ใหม่"</div></div>';
     document.body.appendChild(w);
     w.addEventListener('click', function (e) { if (e.target === w) w.hidden = true; });
     $('ppClose').addEventListener('click', function () { w.hidden = true; });
@@ -34156,7 +34156,7 @@ if(typeof buildFundPrintV35==='function'){
     });
     $('ppBody').innerHTML = rows.length ? '<table><thead><tr><th>ผู้ใช้</th><th>สถานะ</th><th>ไฟล์ที่ใช้ / ไฟล์ที่ใกล้เคียง</th></tr></thead><tbody>' +
       rows.map(function (r) {
-        var right = r.status === 'matched' ? esc(r.file) + ' <small class="c">ความตรง ' + r.score + '%</small>'
+        var right = r.status === 'matched' ? esc(r.file) + ' <small class="c">' + (r.firstNameOnly ? 'จับคู่จากชื่อต้น' : 'ความตรง ' + r.score + '%') + '</small>'
           : (r.candidates && r.candidates.length ? '<small class="c">ใกล้เคียง: ' + esc(r.candidates.join(' · ')) + '</small>' : '<small class="c">—</small>');
         return '<tr><td>' + esc(r.name || '-') + '<small class="c">' + esc(r.username) + (r.department ? ' · ' + esc(r.department) : '') + '</small></td>' +
           '<td><span class="st ' + r.status + '">' + (LABEL[r.status] || r.status) + '</span></td><td>' + right + '</td></tr>';
