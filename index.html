@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- ABC INDEX V107 | LIQUID GLASS V105 + GITHUB BRIDGE V106 + A4 FIT ALL V107 + PRINT LOG V108 -->
+<!-- ABC INDEX V107 | LIQUID GLASS V105 + GITHUB BRIDGE V106 + A4 FIT ALL V107 + PRINT LOG V108 + PROFILE PHOTO V109 -->
 <html lang="th">
 <head>
   <meta charset="UTF-8">
@@ -33174,7 +33174,10 @@ if(typeof buildFundPrintV35==='function'){
     var h1 = $('aurHeroTitle'), eb = $('aurHeroHello'); if (!h1 || !eb) return;
     painting = true;
     var p = period(), fn = firstName(), dark = root.getAttribute('data-lg-theme') === 'dark';
-    var html = '<span class="lg-greet-row"><span class="lg-greet-ic" aria-hidden="true">' + p.ic + '</span><span>สวัสดี' + p.t +
+    var ph = window.__abcProfilePhotoURL || '';
+    var ic = ph ? '<span class="lg-greet-ic lg-photo" aria-hidden="true"><img src="' + ph + '" alt=""><span class="lg-greet-badge">' + p.ic + '</span></span>'
+                : '<span class="lg-greet-ic" aria-hidden="true">' + p.ic + '</span>';
+    var html = '<span class="lg-greet-row">' + ic + '<span>สวัสดี' + p.t +
       (fn ? ' <span class="lg-name">คุณ' + esc(fn) + '</span>' : '') + ' ครับ</span></span>';
     if (h1.innerHTML !== html) h1.innerHTML = html;
     var chips = '<span class="lg-chip">🕘 ' + thaiTime() + '</span>' +
@@ -33196,6 +33199,7 @@ if(typeof buildFundPrintV35==='function'){
     var eb = $('aurHeroHello');
     if (eb) new MutationObserver(function () { if (!painting) paintGreeting(); }).observe(eb, { childList: true, characterData: true, subtree: true });
     paintGreeting();
+    window.abcRepaintGreetingV105 = paintGreeting;
   }, 'greeting');
 
   /* ================= 4) กระดาษ A4 คงสีขาว + ไล่สีตายตัวในโหมดมืด ================= */
@@ -33576,7 +33580,7 @@ if(typeof buildFundPrintV35==='function'){
   window.addEventListener('beforeprint', clearZoom);
   window.addEventListener('afterprint', later);
 
-  window.ABC_BUILD = 'V108 (2026-10-31)';
+  window.ABC_BUILD = 'V109 (2026-10-31)';
   console.log('[A4 FIT ALL V107] พร้อมใช้งาน · build ' + window.ABC_BUILD);
 })();
 </script>
@@ -33975,6 +33979,205 @@ if(typeof buildFundPrintV35==='function'){
 })();
 </script>
 <!-- ========================= END PRINT LOG V108 ========================= -->
+
+
+<!-- =====================================================================
+  ABC SMART FORMS PLUS+ — PROFILE PHOTO V109
+  -----------------------------------------------------------------------
+  รูปโปรไฟล์จากโฟลเดอร์ Drive "ภาพบุคลากร" จับคู่จากชื่อไฟล์ (ProfilePhoto.gs)
+  แสดงที่: แถบทักทาย · เมนูซ้าย · หน้าโปรไฟล์ — ไม่พบรูป = แสดงแบบเดิม
+  Admin: เมนู "จับคู่รูปโปรไฟล์" ดูว่าใครยังไม่มีรูป / ไฟล์ไหนไม่ตรงใคร
+  ถอดออก: ลบตั้งแต่บรรทัดนี้ ถึง "END PROFILE PHOTO V109"
+  ===================================================================== -->
+<style id="abcProfilePhotoV109">
+@media screen {
+  .lg-greet-ic.lg-photo{width:58px!important;height:58px!important;flex:0 0 58px!important;padding:0!important;border-radius:50%!important;
+    position:relative;overflow:visible!important;background:transparent!important;border:0!important;box-shadow:none!important}
+  .lg-greet-ic.lg-photo img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;
+    border:2px solid var(--lg-stroke,#fff);box-shadow:0 6px 18px -6px rgba(0,0,0,.35),var(--lg-hi,none)}
+  .lg-greet-badge{position:absolute;right:-6px;bottom:-4px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;
+    background:var(--lg-glass-strong,#fff);border:1px solid var(--lg-stroke,#fff);box-shadow:0 2px 6px rgba(0,0,0,.18)}
+  html[data-lg-theme] .lg-greet-row:has(.lg-photo){align-items:center!important}
+  @media (max-width:560px){.lg-greet-ic.lg-photo{width:46px!important;height:46px!important;flex-basis:46px!important}.lg-greet-badge{width:22px;height:22px;font-size:12px}}
+
+  .lg-has-photo{background-size:cover!important;background-position:center 30%!important;background-repeat:no-repeat!important;
+    color:transparent!important;font-size:0!important;border:2px solid var(--lg-stroke,#fff)!important}
+  .profile-avatar-large.lg-has-photo{box-shadow:0 10px 30px -10px rgba(0,0,0,.35)!important}
+
+  #ppv109{position:fixed;inset:0;z-index:20500;display:flex;align-items:flex-start;justify-content:center;padding:max(16px,4vh) 12px 16px;
+    background:rgba(10,5,20,.35);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-family:"Prompt",sans-serif;overflow-y:auto}
+  #ppv109[hidden]{display:none!important}
+  #ppv109 .ppc{width:min(1080px,100%);border-radius:28px;padding:clamp(16px,3vw,28px);color:var(--lg-ink,#1d1424);
+    background:var(--lg-glass-strong,rgba(255,255,255,.94));border:1px solid var(--lg-stroke,#fff);box-shadow:0 30px 80px -20px rgba(0,0,0,.45);
+    backdrop-filter:var(--lg-blur,blur(20px));-webkit-backdrop-filter:var(--lg-blur,blur(20px))}
+  #ppv109 h2{font-size:clamp(18px,2.4vw,24px);font-weight:600;margin:0}
+  #ppv109 .pph{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px}
+  #ppv109 .pph p{margin:2px 0 0;font-size:13px;color:var(--lg-muted,#6f6478)}
+  #ppv109 .ppt{display:flex;gap:8px;flex-wrap:wrap}
+  #ppv109 .ppt button,#ppv109 .ppt input{min-height:40px;border-radius:12px;border:1px solid var(--lg-line,rgba(0,0,0,.12));background:var(--lg-fill,#fff);
+    color:var(--lg-ink,#1d1424);padding:0 12px;font:500 13px "Prompt",sans-serif}
+  #ppv109 .ppt button{cursor:pointer}
+  #ppv109 .ppchips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+  #ppv109 .ppchip{border-radius:999px;padding:6px 12px;font-size:12.5px;border:1px solid var(--lg-line,rgba(0,0,0,.1));background:var(--lg-fill,#fff);cursor:pointer}
+  #ppv109 .ppchip.on{background:linear-gradient(120deg,var(--lg-brand,#c2185b),var(--lg-brand-2,#7c3aed));color:#fff;border-color:transparent}
+  #ppv109 .ppbox{border-radius:18px;padding:12px 14px;background:var(--lg-fill,#fff);border:1px solid var(--lg-line,rgba(0,0,0,.1));overflow-x:auto}
+  #ppv109 table{width:100%;border-collapse:collapse;font-size:12.5px}
+  #ppv109 th,#ppv109 td{padding:7px 6px;border-bottom:1px solid var(--lg-line,rgba(0,0,0,.08));text-align:left;vertical-align:top}
+  #ppv109 th{color:var(--lg-muted,#6f6478);font-weight:500}
+  #ppv109 .st{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;white-space:nowrap}
+  #ppv109 .st.matched{background:rgba(16,185,129,.16);color:#0f7a52}
+  #ppv109 .st.weak,#ppv109 .st.ambiguous,#ppv109 .st.shared{background:rgba(245,158,11,.18);color:#9a5b00}
+  #ppv109 .st.none{background:rgba(120,120,140,.14);color:var(--lg-muted,#6f6478)}
+  html[data-lg-theme="dark"] #ppv109 .st.matched{color:#4ade9a} html[data-lg-theme="dark"] #ppv109 .st.weak,html[data-lg-theme="dark"] #ppv109 .st.ambiguous,html[data-lg-theme="dark"] #ppv109 .st.shared{color:#fbbf5a}
+  #ppv109 .ppnote{font-size:12px;color:var(--lg-muted,#6f6478);line-height:1.65;margin-top:10px}
+  #ppv109 .ppempty{padding:28px;text-align:center;color:var(--lg-muted,#6f6478)}
+  #ppv109 small.c{display:block;color:var(--lg-muted,#6f6478);font-size:11px}
+}
+@media print{#ppv109{display:none!important}}
+</style>
+<script id="abcProfilePhotoScriptV109">
+(function () {
+  'use strict';
+  if (window.__abcProfilePhotoV109) return;
+  window.__abcProfilePhotoV109 = true;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var TTL = 24 * 3600e3;
+  function token() { try { return (currentUser && (currentUser.userV47Token || currentUser.token)) || ''; } catch (e) { return ''; } }
+  function uname() { try { return (currentUser && currentUser.username) || ''; } catch (e) { return ''; } }
+  function isAdmin() { try { return /admin/i.test(String(currentUser.role || currentUser.Role || '')); } catch (e) { return false; } }
+  function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ---------- แสดงรูปทุกจุด ---------- */
+  function apply(url) {
+    window.__abcProfilePhotoURL = url || '';
+    var bg = url ? 'url("' + url + '")' : '';
+    Array.prototype.forEach.call(document.querySelectorAll('.app-sidebar-avatar,.profile-avatar-large'), function (el) {
+      el.classList.toggle('lg-has-photo', !!url);
+      if (url) el.style.setProperty('background', bg + ' center 30% / cover no-repeat #fff', 'important');
+      else el.style.removeProperty('background');
+      if (url) el.setAttribute('aria-label', 'รูปโปรไฟล์'); else el.removeAttribute('aria-label');
+    });
+    if (typeof window.abcRepaintGreetingV105 === 'function') try { window.abcRepaintGreetingV105(); } catch (e) {}
+  }
+
+  var busy = false, loadedFor = '';
+  function load(force) {
+    var u = uname(), tk = token();
+    if (!u || !tk || busy) return;
+    var key = 'abcProfilePhotoV109:' + u;
+    var cached = null; try { cached = JSON.parse(ls(key) || 'null'); } catch (e) {}
+    if (cached && cached.url) apply(cached.url);
+    else if (cached && cached.none) apply('');
+    if (!force && loadedFor === u) return;
+    if (!force && cached && Date.now() - cached.at < TTL) { loadedFor = u; return; }
+    busy = true;
+    google.script.run
+      .withSuccessHandler(function (r) {
+        busy = false; loadedFor = u;
+        if (!r || !r.success) { if (r && r.message) console.warn('[PROFILE PHOTO V109]', r.message); return; }
+        if (r.found && r.dataUrl) {
+          apply(r.dataUrl);
+          var v = JSON.stringify({ at: Date.now(), url: r.dataUrl, id: r.fileId });
+          if (v.length < 400000) ls(key, v);
+        } else { apply(''); ls(key, JSON.stringify({ at: Date.now(), none: true })); }
+      })
+      .withFailureHandler(function (e) { busy = false; loadedFor = u; console.warn('[PROFILE PHOTO V109]', e && e.message || e); })
+      .getMyProfilePhotoV109(tk);
+  }
+  window.reloadProfilePhotoV109 = function () { load(true); };
+
+  /* โหลดเมื่อเข้าสู่ระบบ / ล้างเมื่อออกจากระบบ */
+  new MutationObserver(function () {
+    if (document.body.classList.contains('app-shell-ready')) setTimeout(function () { load(false); }, 500);
+    else if (window.__abcProfilePhotoURL) { loadedFor = ''; apply(''); }
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  /* ชื่อในเมนูเปลี่ยน (สลับบัญชี) → โหลดใหม่ · รูปหายเพราะชั้นอื่นวาดใหม่ → ใส่กลับ */
+  var sn = $('sidebarUserName');
+  if (sn) new MutationObserver(function () { setTimeout(function () { load(false); if (window.__abcProfilePhotoURL) apply(window.__abcProfilePhotoURL); }, 200); })
+    .observe(sn, { childList: true, characterData: true, subtree: true });
+  setTimeout(function () { load(false); }, 1200);
+
+  /* ================= Admin: รายงานจับคู่รูป ================= */
+  var LABEL = { matched: '✓ จับคู่แล้ว', weak: 'ชื่อไม่ครบ', ambiguous: 'กำกวม', shared: 'ไฟล์ซ้ำหลายคน', none: 'ไม่พบรูป' };
+  var report = null, filter = 'all';
+  function panel() {
+    var w = $('ppv109'); if (w) return w;
+    w = document.createElement('div'); w.id = 'ppv109'; w.hidden = true; w.className = 'no-print';
+    w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', 'จับคู่รูปโปรไฟล์');
+    w.innerHTML = '<div class="ppc"><div class="pph"><div><h2>🖼️ จับคู่รูปโปรไฟล์</h2><p id="ppSub">กำลังโหลด…</p></div>' +
+      '<div class="ppt"><input id="ppSearch" type="search" placeholder="ค้นหาชื่อ / ไฟล์" aria-label="ค้นหา">' +
+      '<button type="button" id="ppRescan">↻ สแกนโฟลเดอร์ใหม่</button><button type="button" id="ppClose" aria-label="ปิด" style="width:40px;padding:0">✕</button></div></div>' +
+      '<div class="ppchips" id="ppChips"></div><div id="ppBody" class="ppbox"><div class="ppempty">กำลังโหลด…</div></div>' +
+      '<div class="ppnote">วิธีแก้: ตั้งชื่อไฟล์ใน Drive เป็น <b>ชื่อ นามสกุล</b> ให้ตรงกับในระบบ เช่น <code>ณัฐวัฒน์ สุวรรณพันธ์.jpg</code> หรือใช้ <b>username</b> เช่น <code>nattawat.jpg</code> ' +
+      '(คำนำหน้า นาย/นาง/ผศ.ดร. และเลขลำดับหน้าไฟล์ ระบบตัดให้เอง) · ไฟล์ที่มี<b>แค่ชื่อต้น</b>จะไม่ถูกใช้ เพื่อกันรูปผิดคน · แก้ชื่อไฟล์แล้วกด "สแกนโฟลเดอร์ใหม่"</div></div>';
+    document.body.appendChild(w);
+    w.addEventListener('click', function (e) { if (e.target === w) w.hidden = true; });
+    $('ppClose').addEventListener('click', function () { w.hidden = true; });
+    $('ppRescan').addEventListener('click', function () { fetchReport(true); });
+    $('ppSearch').addEventListener('input', render);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !w.hidden) w.hidden = true; });
+    return w;
+  }
+  function fetchReport(refresh) {
+    $('ppSub').textContent = 'กำลังสแกนโฟลเดอร์…';
+    $('ppBody').innerHTML = '<div class="ppempty">กำลังโหลด… (ครั้งแรกอาจใช้เวลาสักครู่)</div>';
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (!r || !r.success) { $('ppBody').innerHTML = '<div class="ppempty">' + esc(r && r.message || 'โหลดไม่สำเร็จ') + '</div>'; $('ppSub').textContent = ''; return; }
+        report = r; render();
+        if (refresh) { ls('abcProfilePhotoV109:' + uname(), null); load(true); }
+      })
+      .withFailureHandler(function (e) { $('ppBody').innerHTML = '<div class="ppempty">โหลดไม่สำเร็จ: ' + esc(e && e.message || e) + '</div>'; })
+      .adminProfilePhotoReportV109(token(), !!refresh);
+  }
+  function render() {
+    if (!report) return;
+    var S = report.summary;
+    $('ppSub').textContent = 'รูปในโฟลเดอร์ ' + report.totalFiles + ' ไฟล์ · ผู้ใช้ ' + report.totalUsers + ' คน · จับคู่แล้ว ' + S.matched + ' คน';
+    var chips = [['all', 'ทั้งหมด ' + report.totalUsers], ['matched', LABEL.matched + ' ' + S.matched], ['need', 'ต้องแก้ชื่อไฟล์ ' + (S.weak + S.ambiguous + S.shared)],
+      ['none', LABEL.none + ' ' + S.none], ['files', 'ไฟล์ที่ไม่ตรงใคร ' + report.unmatchedFiles.length]];
+    $('ppChips').innerHTML = chips.map(function (c) { return '<button type="button" class="ppchip' + (filter === c[0] ? ' on' : '') + '" data-f="' + c[0] + '">' + c[1] + '</button>'; }).join('');
+    Array.prototype.forEach.call($('ppChips').querySelectorAll('button'), function (b) { b.onclick = function () { filter = b.dataset.f; render(); }; });
+    var q = String($('ppSearch').value || '').toLowerCase().trim();
+    if (filter === 'files') {
+      var fl = report.unmatchedFiles.filter(function (n) { return !q || n.toLowerCase().indexOf(q) >= 0; });
+      $('ppBody').innerHTML = fl.length ? '<table><thead><tr><th>ไฟล์ในโฟลเดอร์ที่ยังไม่ตรงกับผู้ใช้คนใด</th></tr></thead><tbody>' +
+        fl.map(function (n) { return '<tr><td>' + esc(n) + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="ppempty">ไม่มี</div>';
+      return;
+    }
+    var rows = report.rows.filter(function (r) {
+      if (filter === 'matched' && r.status !== 'matched') return false;
+      if (filter === 'need' && !/weak|ambiguous|shared/.test(r.status)) return false;
+      if (filter === 'none' && r.status !== 'none') return false;
+      return !q || (r.name + ' ' + r.username + ' ' + r.file + ' ' + r.department).toLowerCase().indexOf(q) >= 0;
+    });
+    $('ppBody').innerHTML = rows.length ? '<table><thead><tr><th>ผู้ใช้</th><th>สถานะ</th><th>ไฟล์ที่ใช้ / ไฟล์ที่ใกล้เคียง</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        var right = r.status === 'matched' ? esc(r.file) + ' <small class="c">ความตรง ' + r.score + '%</small>'
+          : (r.candidates && r.candidates.length ? '<small class="c">ใกล้เคียง: ' + esc(r.candidates.join(' · ')) + '</small>' : '<small class="c">—</small>');
+        return '<tr><td>' + esc(r.name || '-') + '<small class="c">' + esc(r.username) + (r.department ? ' · ' + esc(r.department) : '') + '</small></td>' +
+          '<td><span class="st ' + r.status + '">' + (LABEL[r.status] || r.status) + '</span></td><td>' + right + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<div class="ppempty">ไม่มีรายการ</div>';
+  }
+  window.openProfilePhotoReportV109 = function () {
+    if (typeof closeAppSidebarMobile === 'function') try { closeAppSidebarMobile(); } catch (e) {}
+    panel().hidden = false; fetchReport(false);
+  };
+  (function addMenu() {
+    var sec = $('adminSidebarSection'); if (!sec || $('ppMenuBtn')) return;
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'ppMenuBtn'; b.className = 'app-sidebar-item';
+    b.innerHTML = '<span class="app-sidebar-icon">🖼️</span><span class="app-sidebar-label">จับคู่รูปโปรไฟล์</span>';
+    b.addEventListener('click', window.openProfilePhotoReportV109);
+    sec.appendChild(b);
+  })();
+
+  console.log('[PROFILE PHOTO V109] พร้อมใช้งาน');
+})();
+</script>
+<!-- ========================= END PROFILE PHOTO V109 ========================= -->
 
 </body>
 
