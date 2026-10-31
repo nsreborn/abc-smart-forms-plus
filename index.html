@@ -33293,6 +33293,24 @@ if(typeof buildFundPrintV35==='function'){
     getPrintStylesV11 = ws;
   }
 
+  /* ล็อกขอบกระดาษไว้ในเอกสารเอง: @page margin 0 + padding ที่ body
+     → ได้ขอบเท่าเดิมทุกเบราว์เซอร์ แม้ผู้ใช้เลือก "ขอบ: ไม่มี" หรือ Safari/iPhone ที่ไม่สนใจ @page margin */
+  function lockMargins(doc, marginCss) {
+    if (!doc || !doc.head || doc.getElementById('abcLockMarginV107')) return;
+    var st = doc.createElement('style');
+    st.id = 'abcLockMarginV107';
+    st.textContent =
+      '@page{size:A4 portrait!important;margin:0!important}' +
+      'html,html body,html body.print-document{margin:0!important;width:210mm!important;max-width:210mm!important}' +
+      'html body,html body.print-document{padding:' + marginCss + '!important;box-sizing:border-box!important}' +
+      '@media print{html body,html body.print-document{padding:' + marginCss + '!important}}';
+    doc.head.appendChild(st);
+  }
+  function marginCssFor(v, fallbackMm) {
+    try { var p = getPrintLayoutProfileV34(v); if (p && p.marginCss) return String(p.marginCss).replace(/!important/g, '').trim(); } catch (e) {}
+    return fallbackMm + 'mm';
+  }
+
   function fitAll(doc, marginMm) {
     var pages = Array.prototype.slice.call(doc.querySelectorAll(PAGE_SEL))
       .filter(function (p) { return !p.parentElement.closest(PAGE_SEL); });
@@ -33318,6 +33336,8 @@ if(typeof buildFundPrintV35==='function'){
       }
       page.setAttribute('data-a4v107', mode);
     });
+    var single = pages.length === 1 && pages[0].getAttribute('data-a4v107') !== 'flow';
+    if (single) lockMargins(doc, marginCssFor(view(), marginMm));
   }
 
   /* แบบ กง.1 / ใบกองทุน: หลัง V104 จัดหน้าแล้ว ตรวจซ้ำว่าไม่ล้น ถ้าล้นย่อเพิ่มเล็กน้อย */
@@ -33331,6 +33351,7 @@ if(typeof buildFundPrintV35==='function'){
       setImp(page, 'zoom', String(Math.floor(nz * 1000) / 1000));
       page.setAttribute('data-a4v107', 'safety');
     }
+    lockMargins(doc, marginCssFor(view(), marginMm));
   }
 
   /* โหลดฟอนต์ Prompt ให้เสร็จก่อนวัดหน้า (เดิมวัดตอนฟอนต์ยังไม่มา → พิมพ์จริงยาวเกิน A4) */
