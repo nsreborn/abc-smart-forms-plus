@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- ABC INDEX V107 | LIQUID GLASS V105 + GITHUB BRIDGE V106 + A4 FIT ALL V107 -->
+<!-- ABC INDEX V107 | LIQUID GLASS V105 + GITHUB BRIDGE V106 + A4 FIT ALL V107 + PRINT LOG V108 -->
 <html lang="th">
 <head>
   <meta charset="UTF-8">
@@ -33576,11 +33576,340 @@ if(typeof buildFundPrintV35==='function'){
   window.addEventListener('beforeprint', clearZoom);
   window.addEventListener('afterprint', later);
 
-  window.ABC_BUILD = 'V107.2 (2026-10-31 14:15)';
+  window.ABC_BUILD = 'V108 (2026-10-31)';
   console.log('[A4 FIT ALL V107] พร้อมใช้งาน · build ' + window.ABC_BUILD);
 })();
 </script>
 <!-- ========================= END A4 FIT ALL V107 ========================= -->
+
+
+<!-- =====================================================================
+  ABC SMART FORMS PLUS+ — PRINT LOG + CARBON V108
+  -----------------------------------------------------------------------
+  1) ทุกครั้งที่กด "สั่งพิมพ์ / บันทึก PDF" บันทึก log (ไม่เก็บเนื้อหาเอกสาร)
+     แยก: พิมพ์ครั้งแรก / พิมพ์ซ้ำเพราะแก้ไข / พิมพ์ซ้ำเนื้อหาเดิม
+     บันทึกไม่สำเร็จ → เก็บคิวในเครื่องแล้วส่งใหม่ภายหลัง · ไม่ทำให้การพิมพ์ช้าลง
+  2) Admin: เมนู "สถิติการพิมพ์ & คาร์บอน" — กระดาษ, พิมพ์ซ้ำ, ช่องที่ผิดบ่อย, kgCO2e
+  ต้องมี: ตาราง print_log/print_settings (SQL) + PrintLog.gs + ชื่อฟังก์ชันใน Api.gs
+  ถอดออก: ลบตั้งแต่บรรทัดนี้ ถึง "END PRINT LOG V108"
+  ===================================================================== -->
+<style id="abcPrintLogV108">
+@media screen {
+  #plv108{position:fixed;inset:0;z-index:20500;display:flex;align-items:flex-start;justify-content:center;padding:max(16px,4vh) 12px 16px;
+    background:rgba(10,5,20,.35);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-family:"Prompt",sans-serif;overflow-y:auto}
+  #plv108[hidden]{display:none!important}
+  .plv-card{width:min(1080px,100%);border-radius:28px;padding:clamp(16px,3vw,28px);color:var(--lg-ink,#1d1424);
+    background:var(--lg-glass-strong,rgba(255,255,255,.92));border:1px solid var(--lg-stroke,rgba(255,255,255,.85));
+    box-shadow:var(--lg-hi,none),0 30px 80px -20px rgba(0,0,0,.45);backdrop-filter:var(--lg-blur,blur(20px));-webkit-backdrop-filter:var(--lg-blur,blur(20px))}
+  .plv-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+  .plv-head h2{font-size:clamp(18px,2.4vw,24px);font-weight:600;margin:0}
+  .plv-head p{margin:2px 0 0;color:var(--lg-muted,#6f6478);font-size:13px}
+  .plv-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .plv-tools select,.plv-tools button,.plv-set input{min-height:40px;border-radius:12px;border:1px solid var(--lg-line,rgba(0,0,0,.12));
+    background:var(--lg-fill,#fff);color:var(--lg-ink,#1d1424);padding:0 12px;font:500 13px "Prompt",sans-serif}
+  .plv-tools button{cursor:pointer}
+  .plv-x{width:40px;padding:0!important;font-size:18px!important}
+  .plv-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:6px 0 16px}
+  .plv-kpi{border-radius:18px;padding:14px 16px;background:var(--lg-fill,#fff);border:1px solid var(--lg-line,rgba(0,0,0,.1))}
+  .plv-kpi small{display:block;color:var(--lg-muted,#6f6478);font-size:11.5px}
+  .plv-kpi b{display:block;font-size:22px;font-weight:600;line-height:1.25;font-variant-numeric:tabular-nums}
+  .plv-kpi span{font-size:11.5px;color:var(--lg-muted,#6f6478)}
+  .plv-kpi.green{background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(16,185,129,.05));border-color:rgba(16,185,129,.35)}
+  .plv-kpi.warn{background:linear-gradient(135deg,rgba(245,158,11,.16),rgba(245,158,11,.05));border-color:rgba(245,158,11,.35)}
+  .plv-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px}
+  @media (max-width:820px){.plv-grid{grid-template-columns:1fr}}
+  .plv-box{border-radius:18px;padding:14px 16px;background:var(--lg-fill,#fff);border:1px solid var(--lg-line,rgba(0,0,0,.1));min-width:0}
+  .plv-box h3{font-size:14.5px;font-weight:600;margin:0 0 10px}
+  .plv-bars{display:flex;flex-direction:column;gap:7px}
+  .plv-bar{display:grid;grid-template-columns:64px 1fr 74px;gap:8px;align-items:center;font-size:12px}
+  .plv-track{height:12px;border-radius:99px;background:var(--lg-line,rgba(0,0,0,.08));overflow:hidden;display:flex}
+  .plv-track i{display:block;height:100%}
+  .plv-track i.ok{background:linear-gradient(90deg,var(--lg-brand,#c2185b),var(--lg-brand-2,#7c3aed))}
+  .plv-track i.ed{background:#f59e0b}
+  .plv-legend{display:flex;gap:14px;font-size:11.5px;color:var(--lg-muted,#6f6478);margin-top:8px}
+  .plv-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .plv-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .plv-table th,.plv-table td{padding:7px 6px;border-bottom:1px solid var(--lg-line,rgba(0,0,0,.08));text-align:right;white-space:nowrap}
+  .plv-table th:first-child,.plv-table td:first-child{text-align:left;white-space:normal}
+  .plv-table th{color:var(--lg-muted,#6f6478);font-weight:500}
+  .plv-scroll{overflow-x:auto}
+  .plv-set{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:6px}
+  .plv-set label{font-size:12px;color:var(--lg-muted,#6f6478);display:flex;flex-direction:column;gap:4px}
+  .plv-set input{width:100%}
+  .plv-note{font-size:11.5px;color:var(--lg-muted,#6f6478);margin-top:10px;line-height:1.6}
+  .plv-msg{min-height:1.2em;font-size:12.5px;margin-top:8px}
+  .plv-empty{padding:28px 10px;text-align:center;color:var(--lg-muted,#6f6478)}
+  .plv-save{background:linear-gradient(120deg,var(--lg-brand,#c2185b),var(--lg-brand-2,#7c3aed))!important;color:#fff!important;border:0!important}
+}
+@media print{#plv108{display:none!important}}
+</style>
+<script id="abcPrintLogScriptV108">
+(function () {
+  'use strict';
+  if (window.__abcPrintLogV108) return;
+  window.__abcPrintLogV108 = true;
+
+  var QKEY = 'abcPrintLogQueueV108', SKEY = 'abcPrintSnapV108:';
+  var $ = function (id) { return document.getElementById(id); };
+  function view() { try { return currentActiveView; } catch (e) { return ''; } }
+  function token() { try { return (currentUser && (currentUser.userV47Token || currentUser.token)) || ''; } catch (e) { return ''; } }
+  function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fnv(str) { var h = 0x811c9dc5; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0; } return ('0000000' + h.toString(16)).slice(-8); }
+  function hash(str) { return fnv(str) + fnv('x' + str + 'y'); }
+  function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase(); }
+
+  /* ---------- รหัสเอกสาร: ใช้ช่องหลักของแต่ละฟอร์ม (เข้ารหัสก่อนส่ง) ---------- */
+  var ID_FIELDS = {
+    dashboardView: ['reqProject', 'reqName'],
+    fundFormView: ['fundV95Project'],
+    receiptFormView: ['recName', 'receiptDate', 'receiptPlace'],
+    certReceiptFormView: ['certName', 'certReceiptDate', 'certPlace'],
+    projectCoverView: ['currentProjectCoverId', 'projectCoverName'],
+    purchaseScopeView: ['purchaseScopeProjectName'],
+    travelSoloView: ['tsName', 'tsBusinessPlace'],
+    travelGroupView: ['tgName', 'tgBusinessPlace']
+  };
+  function docKey(v) {
+    var ids = ID_FIELDS[v] || [];
+    if (v === 'projectCoverView' && $('currentProjectCoverId') && $('currentProjectCoverId').value) ids = ['currentProjectCoverId'];
+    var parts = ids.map(function (id) { var e = $(id); return e ? norm(e.value) : ''; });
+    var any = parts.some(Boolean);
+    return v + ':' + hash(any ? parts.join('|') : 'untitled');
+  }
+
+  /* ---------- ชื่อช่อง (ไว้บอกว่าแก้ช่องไหนก่อนพิมพ์ซ้ำ — ไม่เก็บค่า) ---------- */
+  var LABELS = {
+    reqDate: 'วันที่', reqName: 'ชื่อผู้ขอเบิก', reqPosition: 'ตำแหน่ง', reqDept: 'หน่วยงาน', reqPhone: 'เบอร์โทร',
+    reqProject: 'ขอเบิกค่าใช้จ่ายเกี่ยวกับ', reqBank: 'เลขบัญชี', budBA: 'รหัสงบประมาณ', budCC: 'รหัสงบประมาณ', budBP: 'รหัสงบประมาณ',
+    budFund: 'รหัสงบประมาณ', budFA: 'รหัสงบประมาณ', budCI: 'รหัสงบประมาณ', budFC: 'รหัสงบประมาณ'
+  };
+  var CLASS_LABELS = { 'item-amt': 'จำนวนเงิน', 'item-rec': 'เลขที่ใบเสร็จ', 'item-desc': 'รายการ', 'item-date': 'วันที่ใบเสร็จ' };
+  function labelOf(el) {
+    if (el.id && LABELS[el.id]) return LABELS[el.id];
+    for (var c in CLASS_LABELS) if (el.classList.contains(c)) return CLASS_LABELS[c];
+    var t = '';
+    if (el.id) { var l = document.querySelector('label[for="' + el.id + '"]'); if (l) t = l.textContent; }
+    if (!t) t = el.getAttribute('aria-label') || '';
+    if (!t) { var box = el.closest('.col,.col-md-6,.col-md-4,.col-md-3,.col-12,.mb-3,.form-group,label'); var lb = box && box.querySelector('label,.form-label'); if (lb && lb !== el) t = lb.textContent; }
+    if (!t) { var p = el.previousSibling; while (p && !t) { t = (p.textContent || '').trim(); p = p.previousSibling; } }
+    if (!t) t = el.getAttribute('placeholder') || el.id || el.name || 'ช่องข้อมูล';
+    t = t.replace(/[*:：]/g, '').replace(/\s+/g, ' ').trim();
+    return t.length > 40 ? t.slice(0, 40) + '…' : t;
+  }
+  function snapshot(v) {
+    var root = $(v), snap = {};
+    if (!root) return snap;
+    var seen = {};
+    Array.prototype.forEach.call(root.querySelectorAll('input,select,textarea'), function (el) {
+      var t = (el.type || '').toLowerCase();
+      if (t === 'button' || t === 'submit' || t === 'file' || el.closest('.lg-theme-seg,.aur-dock')) return;
+      var key = el.id || el.name || (el.className || 'f').split(' ')[0];
+      seen[key] = (seen[key] || 0) + 1;
+      if (!el.id) key += '#' + seen[key];
+      var val = (t === 'checkbox' || t === 'radio') ? (el.checked ? '1' : '0') : norm(el.value);
+      snap[key] = [fnv(val), labelOf(el)];
+    });
+    return snap;
+  }
+
+  /* ---------- ส่ง log (ไม่บล็อกการพิมพ์ + คิวสำรอง) ---------- */
+  function queue() { try { return JSON.parse(ls(QKEY) || '[]'); } catch (e) { return []; } }
+  function saveQueue(q) { ls(QKEY, q.length ? JSON.stringify(q.slice(-200)) : null); }
+  function send(p, onDone) {
+    var tk = token();
+    if (!tk || !window.google || !google.script || !google.script.run) { onDone(false); return; }
+    google.script.run
+      .withSuccessHandler(function (r) { onDone(!!(r && r.success), r); })
+      .withFailureHandler(function () { onDone(false); })
+      .logPrintV108(tk, p);
+  }
+  function enqueue(p) { var q = queue(); q.push(p); saveQueue(q); }
+  var flushing = false;
+  function flush() {
+    if (flushing) return; var q = queue(); if (!q.length || !token()) return;
+    flushing = true;
+    var item = q[0];
+    send(item, function (ok, r) {
+      flushing = false;
+      if (ok || (r && r.success === false && /ข้อมูลไม่ครบ|ไม่อนุญาต/.test(r.message || ''))) {
+        var q2 = queue(); q2.shift(); saveQueue(q2); if (q2.length) setTimeout(flush, 400);
+      }
+    });
+  }
+
+  function logPrint(v, printHtml, mode) {
+    var key = docKey(v);
+    var snap = snapshot(v);
+    var vals = Object.keys(snap).sort().map(function (k) { return k + '=' + snap[k][0]; }).join('&');
+    var contentHash = hash(vals || String(printHtml || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+    var prev = null; try { prev = JSON.parse(ls(SKEY + key) || 'null'); } catch (e) {}
+    var changed = [];
+    if (prev && prev.snap) {
+      Object.keys(snap).forEach(function (k) { if (!prev.snap[k] || prev.snap[k][0] !== snap[k][0]) { if (changed.indexOf(snap[k][1]) < 0) changed.push(snap[k][1]); } });
+    }
+    ls(SKEY + key, JSON.stringify({ t: Date.now(), snap: snap }));
+    var pages = 1;
+    try { if (typeof getPrintPageCountV36 === 'function') pages = getPrintPageCountV36(printHtml) || 1; } catch (e) {}
+    var p = {
+      form: v, docKey: key, contentHash: contentHash, mode: mode === 'PDF' ? 'PDF' : 'PRINT',
+      event: 'print', pages: pages, changedFields: changed.slice(0, 25),
+      client: window.__ABC_ON_GITHUB__ ? 'github' : 'appsscript', at: new Date().toISOString()
+    };
+    send(p, function (ok) { if (!ok) enqueue(p); else flush(); });
+  }
+
+  /* ใช้ได้กับ checklist ในอนาคต: window.abcLogPreventedV108(จำนวนหน้า) */
+  window.abcLogPreventedV108 = function (pages) {
+    var v = view(); if (!v) return;
+    var p = { form: v, docKey: docKey(v), event: 'prevented', pages: Math.max(1, pages || 1), client: window.__ABC_ON_GITHUB__ ? 'github' : 'appsscript' };
+    send(p, function (ok) { if (!ok) enqueue(p); });
+  };
+
+  if (typeof openIsolatedPrintWindowV11 === 'function' && !openIsolatedPrintWindowV11.__printLogV108) {
+    var prevOpen = openIsolatedPrintWindowV11;
+    var wrapped = function (printHtml, mode) {
+      var v = view();
+      var frame = prevOpen.apply(this, arguments);
+      try { if (v) setTimeout(function () { try { logPrint(v, printHtml, mode); } catch (e) { console.warn('[PRINT LOG V108]', e); } }, 0); }
+      catch (e) {}
+      return frame;
+    };
+    for (var k in prevOpen) if (Object.prototype.hasOwnProperty.call(prevOpen, k)) wrapped[k] = prevOpen[k];
+    wrapped.__printLogV108 = true;
+    openIsolatedPrintWindowV11 = wrapped;
+  }
+  setTimeout(flush, 4000);
+  window.addEventListener('online', flush);
+
+  /* ================= Admin: สถิติการพิมพ์ & คาร์บอน ================= */
+  var nf = function (n, d) { return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
+  var MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  function monthLabel(ym) { var a = ym.split('-'); return MONTHS[(+a[1] || 1) - 1] + ' ' + String((+a[0] || 0) + 543).slice(-2); }
+  function range(kind) {
+    var now = new Date(), y = now.getFullYear(), m = now.getMonth();
+    if (kind === 'month') return { from: new Date(y, m, 1).toISOString(), label: 'เดือนนี้' };
+    if (kind === 'fy') { var fy = m >= 9 ? y : y - 1; return { from: new Date(fy, 9, 1).toISOString(), label: 'ปีงบประมาณ ' + (fy + 544) }; }
+    if (kind === '90') return { from: new Date(now.getTime() - 90 * 864e5).toISOString(), label: '90 วันล่าสุด' };
+    return { from: '', label: 'ทั้งหมด' };
+  }
+
+  function panel() {
+    var w = $('plv108');
+    if (w) return w;
+    w = document.createElement('div');
+    w.id = 'plv108'; w.hidden = true; w.className = 'no-print';
+    w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', 'สถิติการพิมพ์และคาร์บอน');
+    w.innerHTML = '<div class="plv-card"><div class="plv-head"><div><h2>🌱 สถิติการพิมพ์ &amp; คาร์บอนฟุตพริ้นท์</h2>' +
+      '<p id="plvSub">กำลังโหลด…</p></div><div class="plv-tools">' +
+      '<select id="plvRange" aria-label="ช่วงเวลา"><option value="fy">ปีงบประมาณนี้</option><option value="month">เดือนนี้</option><option value="90">90 วันล่าสุด</option><option value="all">ทั้งหมด</option></select>' +
+      '<button type="button" id="plvReload">↻ รีเฟรช</button><button type="button" class="plv-x" id="plvClose" aria-label="ปิด">✕</button></div></div>' +
+      '<div id="plvBody"><div class="plv-empty">กำลังโหลดข้อมูล…</div></div></div>';
+    document.body.appendChild(w);
+    w.addEventListener('click', function (e) { if (e.target === w) w.hidden = true; });
+    $('plvClose').addEventListener('click', function () { w.hidden = true; });
+    $('plvReload').addEventListener('click', load);
+    $('plvRange').addEventListener('change', load);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !w.hidden) w.hidden = true; });
+    return w;
+  }
+
+  function load() {
+    var r = range($('plvRange').value);
+    $('plvSub').textContent = r.label + ' · กำลังโหลด…';
+    $('plvBody').innerHTML = '<div class="plv-empty">กำลังโหลดข้อมูล…</div>';
+    google.script.run
+      .withSuccessHandler(function (res) { render(res, r); })
+      .withFailureHandler(function (e) { $('plvBody').innerHTML = '<div class="plv-empty">โหลดไม่สำเร็จ: ' + esc(e && e.message || e) + '</div>'; })
+      .getPrintStatsV108(token(), { from: r.from });
+  }
+
+  function render(res, r) {
+    if (!res || !res.success) { $('plvBody').innerHTML = '<div class="plv-empty">' + esc(res && res.message || 'โหลดไม่สำเร็จ') + '</div>'; return; }
+    var T = res.totals, S = res.settings, F = res.factors;
+    $('plvSub').textContent = r.label + ' · ' + nf(res.rowCount) + ' รายการ · 1 แผ่น ≈ ' + nf(F.kgCO2ePerSheet * 1000, 1) + ' gCO₂e';
+    var cost = function (v) { return v == null ? '' : ' · ' + nf(v, 2) + ' บาท'; };
+    var kpi = function (cls, label, val, sub) { return '<div class="plv-kpi ' + cls + '"><small>' + label + '</small><b>' + val + '</b><span>' + (sub || '') + '</span></div>'; };
+    var html = '<div class="plv-kpis">' +
+      kpi('', 'สั่งพิมพ์ / PDF', nf(T.prints) + ' ครั้ง', 'PDF ' + nf(T.pdf) + ' ครั้ง') +
+      kpi('', 'กระดาษที่ใช้', nf(T.sheets) + ' แผ่น', nf(T.co2_total, 2) + ' kgCO₂e' + cost(T.cost_total)) +
+      kpi('warn', 'พิมพ์ซ้ำเพราะแก้ไข', nf(T.sheets_edit) + ' แผ่น', nf(T.edit_rate * 100, 1) + '% · ' + nf(T.co2_edit, 2) + ' kgCO₂e' + cost(T.cost_edit)) +
+      kpi('', 'พิมพ์ซ้ำเนื้อหาเดิม (สำเนา)', nf(T.sheets_same) + ' แผ่น', 'ไม่นับเป็นความผิดพลาด') +
+      kpi('green', 'ลดได้ (ประมาณ)', nf(T.avoided_sheets) + ' แผ่น', nf(T.co2_avoided, 2) + ' kgCO₂e' + cost(T.cost_avoided)) +
+      '</div>';
+
+    var months = Object.keys(res.byMonth).sort().slice(-12);
+    var maxM = Math.max.apply(null, [1].concat(months.map(function (m) { return res.byMonth[m].sheets; })));
+    var bars = months.length ? months.map(function (m) {
+      var d = res.byMonth[m], ok = d.sheets - d.sheets_edit;
+      return '<div class="plv-bar"><span>' + monthLabel(m) + '</span><div class="plv-track" title="' + nf(d.sheets) + ' แผ่น (แก้ไข ' + nf(d.sheets_edit) + ')">' +
+        '<i class="ok" style="width:' + (ok / maxM * 100) + '%"></i><i class="ed" style="width:' + (d.sheets_edit / maxM * 100) + '%"></i></div><span style="text-align:right">' + nf(d.sheets) + ' แผ่น</span></div>';
+    }).join('') : '<div class="plv-empty">ยังไม่มีข้อมูล</div>';
+
+    var forms = Object.keys(res.byForm).sort(function (a, b) { return res.byForm[b].sheets - res.byForm[a].sheets; });
+    var formRows = forms.map(function (f) {
+      var d = res.byForm[f];
+      return '<tr><td>' + esc(f) + '</td><td>' + nf(d.prints) + '</td><td>' + nf(d.sheets) + '</td><td>' + nf(d.sheets_edit) + '</td><td>' + nf(d.sheets ? d.sheets_edit / d.sheets * 100 : 0, 1) + '%</td></tr>';
+    }).join('');
+    var fields = (res.topFields || []).map(function (x, i) { return '<tr><td>' + (i + 1) + '. ' + esc(x.field) + '</td><td>' + nf(x.count) + ' ครั้ง</td></tr>'; }).join('');
+
+    html += '<div class="plv-grid"><div class="plv-box"><h3>กระดาษรายเดือน</h3><div class="plv-bars">' + bars + '</div>' +
+      '<div class="plv-legend"><span><i style="background:linear-gradient(90deg,var(--lg-brand,#c2185b),var(--lg-brand-2,#7c3aed))"></i>พิมพ์ปกติ</span><span><i style="background:#f59e0b"></i>พิมพ์ซ้ำเพราะแก้ไข</span></div></div>' +
+      '<div class="plv-box"><h3>ช่องที่แก้บ่อยก่อนพิมพ์ซ้ำ</h3>' + (fields ? '<table class="plv-table"><tbody>' + fields + '</tbody></table>' : '<div class="plv-empty">ยังไม่มีการพิมพ์ซ้ำเพราะแก้ไข</div>') +
+      '<div class="plv-note">ใช้ปรับ checklist ก่อนพิมพ์ให้ตรงจุด</div></div></div>';
+
+    html += '<div class="plv-box" style="margin-top:14px"><h3>แยกตามแบบฟอร์ม</h3><div class="plv-scroll"><table class="plv-table"><thead><tr><th>แบบฟอร์ม</th><th>ครั้ง</th><th>แผ่น</th><th>แผ่นที่พิมพ์ซ้ำเพราะแก้ไข</th><th>อัตรา</th></tr></thead><tbody>' +
+      (formRows || '<tr><td colspan="5" class="plv-empty">ยังไม่มีข้อมูล</td></tr>') + '</tbody></table></div></div>';
+
+    if (T.baseline_rate != null) {
+      html += '<div class="plv-box" style="margin-top:14px"><h3>เทียบก่อน–หลังใช้ checklist</h3><div class="plv-note" style="margin:0;font-size:13px">' +
+        'อัตราพิมพ์ซ้ำเพราะแก้ไข: ก่อน <b>' + nf(T.baseline_rate * 100, 1) + '%</b> → หลัง <b>' + nf(T.after_rate * 100, 1) + '%</b> · ลดได้ประมาณ ' + nf(T.avoided_vs_baseline) + ' แผ่น</div></div>';
+    }
+
+    html += '<div class="plv-box" style="margin-top:14px"><h3>ค่าตั้งต้นการคำนวณ</h3><div class="plv-set">' +
+      '<label>EF กระดาษ (kgCO₂e/kg)<input id="plvEf" type="number" step="0.0001" value="' + esc(S.ef_kgco2e_per_kg) + '"></label>' +
+      '<label>น้ำหนัก 1 รีม (kg)<input id="plvRw" type="number" step="0.01" value="' + esc(S.ream_weight_kg) + '"></label>' +
+      '<label>แผ่นต่อรีม<input id="plvSpr" type="number" step="1" value="' + esc(S.sheets_per_ream) + '"></label>' +
+      '<label>ราคาต่อแผ่น (บาท, ไม่บังคับ)<input id="plvPrice" type="number" step="0.01" value="' + esc(S.price_per_sheet == null ? '' : S.price_per_sheet) + '"></label>' +
+      '<label>วันสิ้นสุดช่วงก่อนใช้ checklist<input id="plvBase" type="date" value="' + esc(S.baseline_end || '') + '"></label>' +
+      '<label style="grid-column:1/-1">ที่มาของค่า EF<input id="plvSrc" type="text" value="' + esc(S.ef_source || '') + '"></label>' +
+      '</div><div class="plv-tools" style="margin-top:10px"><button type="button" class="plv-save" id="plvSave">บันทึกค่าตั้งต้น</button></div><div class="plv-msg" id="plvMsg" role="status"></div>' +
+      '<div class="plv-note">สูตร: แผ่น × (น้ำหนักรีม ÷ แผ่นต่อรีม) × EF = kgCO₂e · ตัวเลขนับจาก "การกดสั่งพิมพ์/บันทึก PDF" (ไม่ทราบว่าผู้ใช้กดยกเลิกในหน้าต่างพิมพ์หรือไม่) จึงเป็นค่าประมาณ · ' +
+      'ที่มา EF: ' + esc(S.ef_source || '-') + '</div></div>';
+
+    $('plvBody').innerHTML = html;
+    $('plvSave').addEventListener('click', function () {
+      var msg = $('plvMsg'); msg.textContent = 'กำลังบันทึก…';
+      google.script.run
+        .withSuccessHandler(function (x) { msg.textContent = x && x.success ? '✓ บันทึกแล้ว' : ('บันทึกไม่สำเร็จ: ' + (x && x.message || '')); if (x && x.success) load(); })
+        .withFailureHandler(function (e) { msg.textContent = 'บันทึกไม่สำเร็จ: ' + (e && e.message || e); })
+        .savePrintSettingsV108(token(), {
+          ef_kgco2e_per_kg: $('plvEf').value, ream_weight_kg: $('plvRw').value, sheets_per_ream: $('plvSpr').value,
+          price_per_sheet: $('plvPrice').value, baseline_end: $('plvBase').value, ef_source: $('plvSrc').value
+        });
+    });
+  }
+
+  window.openPrintStatsV108 = function () {
+    if (typeof closeAppSidebarMobile === 'function') try { closeAppSidebarMobile(); } catch (e) {}
+    var w = panel(); w.hidden = false; load();
+  };
+
+  /* ปุ่มในเมนูผู้ดูแลระบบ (แสดงเฉพาะ Admin เพราะอยู่ในส่วน adminSidebarSection เดิม) */
+  (function addMenu() {
+    var sec = $('adminSidebarSection');
+    if (!sec || $('plvMenuBtn')) return;
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'plvMenuBtn'; b.className = 'app-sidebar-item';
+    b.innerHTML = '<span class="app-sidebar-icon">🌱</span><span class="app-sidebar-label">สถิติการพิมพ์ &amp; คาร์บอน</span>';
+    b.addEventListener('click', window.openPrintStatsV108);
+    sec.appendChild(b);
+  })();
+
+  console.log('[PRINT LOG V108] พร้อมใช้งาน');
+})();
+</script>
+<!-- ========================= END PRINT LOG V108 ========================= -->
 
 </body>
 
