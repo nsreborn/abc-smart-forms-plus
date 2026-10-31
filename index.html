@@ -3,6 +3,104 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
+  <!-- =====================================================================
+  ABC SMART FORMS PLUS+ — GITHUB BRIDGE V106
+  -----------------------------------------------------------------------
+  ทำให้ไฟล์นี้รันบน GitHub Pages ได้ โดยยังใช้หลังบ้าน (Code.gs) บน Apps Script เดิม
+  - ถ้าเปิดผ่าน Apps Script ตามเดิม: บล็อกนี้จะไม่ทำงาน (ใช้ google.script.run ของจริง)
+  - ถ้าเปิดจาก GitHub: แปลง google.script.run → fetch() ไปที่ Web App URL ด้านล่าง
+  ===================================================================== -->
+<script id="abcApiConfigV106">
+  /* ▼▼▼ วาง Web App URL ของ Apps Script (ลงท้ายด้วย /exec) ตรงนี้ ▼▼▼ */
+  window.ABC_API_URL = 'https://script.google.com/macros/s/AKfycbxKBnu-Umk9Eu_QocXG1gzUi0KFvrdkGRcorqamIBFWL7nqlwJWodEkdTeOKFPHJsPpSQ/exec';
+  /* ▲▲▲ ------------------------------------------------------------ ▲▲▲ */
+</script>
+<script id="abcGithubBridgeV106">
+(function () {
+  'use strict';
+  if (window.google && window.google.script && window.google.script.run) return; // อยู่บน Apps Script อยู่แล้ว
+
+  var URL_OK = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(String(window.ABC_API_URL || '').trim());
+  var TIMEOUT_MS = 60000;
+
+  function call(fn, args, ok, fail, userObj) {
+    var onFail = function (err) {
+      var e = err instanceof Error ? err : new Error(String(err && err.message || err));
+      if (typeof fail === 'function') fail(e, userObj);
+      else console.error('[ABC API] ' + fn + ':', e);
+    };
+    if (!URL_OK) { onFail(new Error('ยังไม่ได้ตั้งค่า ABC_API_URL (Web App URL ของ Apps Script)')); return; }
+
+    var payload;
+    try { payload = JSON.stringify({ fn: fn, args: args }); }
+    catch (e) { onFail(new Error('ส่งข้อมูลไปเซิร์ฟเวอร์ไม่ได้: ' + e.message)); return; }
+
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, TIMEOUT_MS);
+
+    fetch(String(window.ABC_API_URL).trim(), {
+      method: 'POST',
+      /* text/plain = ไม่มี CORS preflight (Apps Script ไม่รองรับ OPTIONS) */
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: payload,
+      redirect: 'follow',
+      signal: ctrl ? ctrl.signal : undefined
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('เซิร์ฟเวอร์ตอบกลับผิดพลาด (HTTP ' + r.status + ')');
+        return r.text();
+      })
+      .then(function (txt) {
+        var res;
+        try { res = JSON.parse(txt); }
+        catch (e) { throw new Error('เซิร์ฟเวอร์ไม่ได้ตอบเป็น JSON — ตรวจว่า Deploy แบบ "Anyone" และวาง Api.gs แล้ว'); }
+        if (res && res.__error) throw new Error(res.__error);
+        clearTimeout(timer);
+        if (typeof ok === 'function') ok(res ? res.result : res, userObj);
+      })
+      .catch(function (err) {
+        clearTimeout(timer);
+        if (err && err.name === 'AbortError') err = new Error('เชื่อมต่อเซิร์ฟเวอร์นานเกินไป กรุณาลองใหม่');
+        else if (err instanceof TypeError) err = new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+        onFail(err);
+      });
+  }
+
+  /* เลียนแบบ google.script.run: .withSuccessHandler().withFailureHandler().withUserObject().ชื่อฟังก์ชัน(...) */
+  function runner(ok, fail, userObj) {
+    return new Proxy({}, {
+      get: function (_, key) {
+        if (key === 'withSuccessHandler') return function (h) { return runner(h, fail, userObj); };
+        if (key === 'withFailureHandler') return function (h) { return runner(ok, h, userObj); };
+        if (key === 'withUserObject') return function (o) { return runner(ok, fail, o); };
+        if (typeof key !== 'string' || key === 'then' || key === 'toJSON') return undefined;
+        return function () { call(key, Array.prototype.slice.call(arguments), ok, fail, userObj); };
+      }
+    });
+  }
+
+  window.google = window.google || {};
+  window.google.script = {
+    get run() { return runner(null, null, undefined); },
+    host: { close: function () {}, setHeight: function () {}, setWidth: function () {}, editor: {} }
+  };
+  window.__ABC_ON_GITHUB__ = true;
+
+  if (!URL_OK) {
+    document.addEventListener('DOMContentLoaded', function () {
+      var b = document.createElement('div');
+      b.className = 'no-print';
+      b.setAttribute('role', 'alert');
+      b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:30000;padding:12px 16px;border-radius:14px;' +
+        'background:#fff3cd;color:#664d03;border:1px solid #ffe69c;font:500 13px Prompt,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.15)';
+      b.textContent = '⚠️ ยังไม่ได้ตั้งค่า ABC_API_URL ใน index.html — วาง Web App URL ของ Apps Script (ลงท้าย /exec) แล้วอัปโหลดใหม่';
+      document.body.appendChild(b);
+    });
+  }
+})();
+</script>
+<!-- ========================= END GITHUB BRIDGE V106 ========================= -->
+
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ABC Smart Forms Plus+ | Digital Forms Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
