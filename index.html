@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- ABC INDEX V107 | LIQUID GLASS V105 + GITHUB BRIDGE V106 + A4 FIT ALL V107 + PRINT LOG V108 + PROFILE PHOTO V109 -->
+<!-- ABC INDEX V107 | LIQUID GLASS V105 + GITHUB BRIDGE V106 + A4 FIT ALL V107 + PRINT LOG V108 + PROFILE PHOTO V109 + ZOOM PLUS V110 -->
 <html lang="th">
 <head>
   <meta charset="UTF-8">
@@ -33580,7 +33580,7 @@ if(typeof buildFundPrintV35==='function'){
   window.addEventListener('beforeprint', clearZoom);
   window.addEventListener('afterprint', later);
 
-  window.ABC_BUILD = 'V109 (2026-10-31)';
+  window.ABC_BUILD = 'V110 (2026-11-07)';
   console.log('[A4 FIT ALL V107] พร้อมใช้งาน · build ' + window.ABC_BUILD);
 })();
 </script>
@@ -33935,7 +33935,7 @@ if(typeof buildFundPrintV35==='function'){
     google.script.run
       .withSuccessHandler(function (r) {
         heroBusy = false; heroAt = Date.now();
-        if (!r || !r.success) { c.hidden = true; if (r && r.message) console.warn('[PRINT LOG V108] การ์ดคาร์บอน:', r.message); return; }
+        if (!r || !r.success || !r.mine || !r.org) { c.hidden = true; if (r && r.message) console.warn('[PRINT LOG V108] การ์ดคาร์บอน:', r.message); return; }
         var m = r.mine, o = r.org;
         var main = m.sheets
           ? 'ของฉัน ' + nf(m.sheets) + ' แผ่น · ' + fmtKg(m.co2_kg)
@@ -34179,6 +34179,546 @@ if(typeof buildFundPrintV35==='function'){
 })();
 </script>
 <!-- ========================= END PROFILE PHOTO V109 ========================= -->
+
+
+<!-- =====================================================================
+  ABC SMART FORMS PLUS+ — ZOOM PLUS V110
+  -----------------------------------------------------------------------
+  1) ข้อมูลเข้าใช้ Zoom: ผู้จองเห็น Username + Password ได้ทั้งวัน "ในวันที่ใช้งาน"
+     (ก่อนวันใช้งานแสดงว่าเปิดให้ดูวันไหน) · ปิดปุ่มดูรหัสก่อนจองในฟอร์มจอง
+  2) จองซ้ำ: ทุกวัน / ทุกสัปดาห์ (เลือกวันได้) / ทุก 2 สัปดาห์ / ทุกเดือน
+     ตรวจเวลาว่างทุกวันก่อนจอง → เลือกเอาออกได้ → จองทีเดียว → ยกเลิกทั้งชุดได้
+  ต้องมี: ZoomPlus.gs + Api.gs (V110) + ตาราง zoom_series
+  ถอดออก: ลบตั้งแต่บรรทัดนี้ ถึง "END ZOOM PLUS V110"
+  ===================================================================== -->
+<style id="abcZoomPlusV110">
+@media screen {
+  #zoomSelectedPasswordBox{display:none!important}
+  .zp-note{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:10px 12px;border-radius:14px;font-size:12.5px;line-height:1.55;
+    background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);color:var(--lg-ink,#1d1424)}
+  .zp-note b{font-weight:600}
+
+  /* ---------- จองซ้ำ ---------- */
+  .zp-repeat{margin-top:20px;padding:16px;border-radius:20px;background:var(--lg-fill,rgba(255,255,255,.6));border:1px solid var(--lg-line,rgba(0,0,0,.1))}
+  .zp-repeat h6{font-size:14.5px;font-weight:600;margin:0 0 4px}
+  .zp-repeat .zp-sub{font-size:12.5px;color:var(--lg-muted,#6f6478);margin:0 0 12px}
+  .zp-seg{display:flex;flex-wrap:wrap;gap:6px}
+  .zp-seg button,.zp-days button{min-height:40px;border-radius:999px;padding:6px 14px;font:500 13px "Prompt",sans-serif;cursor:pointer;
+    border:1px solid var(--lg-line,rgba(0,0,0,.12));background:var(--lg-glass-strong,#fff);color:var(--lg-ink,#1d1424);transition:background .15s,color .15s}
+  .zp-seg button[aria-pressed="true"],.zp-days button[aria-pressed="true"]{background:linear-gradient(120deg,var(--lg-brand,#c2185b),var(--lg-brand-2,#7c3aed));color:#fff;border-color:transparent}
+  .zp-days{display:flex;gap:6px;flex-wrap:wrap}
+  .zp-days button{min-width:46px;padding:6px 10px}
+  .zp-row{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center;margin-top:14px}
+  .zp-row > label{font-size:13px;font-weight:500;min-width:84px}
+  .zp-end{display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;font-size:13px}
+  .zp-end label{display:flex;gap:6px;align-items:center;cursor:pointer}
+  .zp-end input[type=number]{width:76px}
+  .zp-end input[type=date]{width:170px}
+  .zp-summary{margin-top:14px;padding:12px 14px;border-radius:14px;font-size:13.5px;line-height:1.6;
+    background:linear-gradient(135deg,rgba(124,58,237,.10),rgba(194,24,91,.06));border:1px solid rgba(124,58,237,.25)}
+  .zp-summary b{font-weight:600}
+  .zp-check{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .zp-check .btn{min-height:40px;border-radius:999px}
+  .zp-list{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:8px}
+  .zp-day{display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border-radius:14px;font-size:12.5px;cursor:pointer;
+    border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.08)}
+  .zp-day.bad{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.07);cursor:not-allowed}
+  .zp-day.off{opacity:.55;background:transparent}
+  .zp-day input{margin-top:3px}
+  .zp-day small{display:block;color:var(--lg-muted,#6f6478);font-size:11.5px}
+  .zp-count{font-size:12.5px;color:var(--lg-muted,#6f6478)}
+
+  /* ---------- ข้อมูลเข้าใช้ ---------- */
+  .zp-cred{margin-top:10px;border-radius:16px;padding:11px 13px;font-size:13px;border:1px solid var(--lg-line,rgba(0,0,0,.1));background:var(--lg-fill,rgba(255,255,255,.6))}
+  .zp-cred.lock{color:var(--lg-muted,#6f6478);background:transparent;border-style:dashed}
+  .zp-cred.today{border-color:rgba(16,185,129,.4);background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.03))}
+  .zp-cred .zp-h{font-weight:600;margin-bottom:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .zp-kv{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center}
+  .zp-kv span.k{color:var(--lg-muted,#6f6478);font-size:12px}
+  .zp-kv code{font:600 14px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--lg-ink,#1d1424);background:transparent;word-break:break-all;padding:0}
+  .zp-kv .zp-btns{display:flex;gap:4px}
+  .zp-ic{min-width:36px;min-height:36px;border-radius:10px;border:1px solid var(--lg-line,rgba(0,0,0,.12));background:var(--lg-glass-strong,#fff);cursor:pointer;font-size:14px;color:var(--lg-ink,#1d1424)}
+  .zp-go{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px}
+  .zp-open{min-height:40px;border-radius:999px;padding:6px 16px;border:0;cursor:pointer;color:#fff;font:500 13px "Prompt",sans-serif;
+    background:linear-gradient(120deg,#0e9f6e,#0b7a55)}
+  .zp-badge{display:inline-flex;gap:5px;align-items:center;margin-top:6px;padding:3px 10px;border-radius:999px;font-size:11.5px;
+    background:rgba(124,58,237,.10);color:#6d28d9;border:1px solid rgba(124,58,237,.25)}
+  html[data-lg-theme="dark"] .zp-badge{color:#c4b5fd}
+  .zp-today{margin-bottom:12px;padding:14px 16px;border-radius:18px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+    background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(16,185,129,.04));border:1px solid rgba(16,185,129,.4)}
+  .zp-series{margin-bottom:12px;padding:12px 16px;border-radius:18px;background:var(--lg-fill,rgba(255,255,255,.6));border:1px solid var(--lg-line,rgba(0,0,0,.1))}
+  .zp-series h6{font-size:14px;font-weight:600;margin:0 0 8px}
+  .zp-srow{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--lg-line,rgba(0,0,0,.1));font-size:13px}
+  .zp-srow:first-of-type{border-top:0}
+  .zp-srow small{display:block;color:var(--lg-muted,#6f6478)}
+
+  #zpResult{position:fixed;inset:0;z-index:21000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,5,20,.35);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  #zpResult[hidden]{display:none}
+  #zpResult .zpr{width:min(520px,100%);border-radius:24px;padding:22px;background:var(--lg-glass-strong,#fff);border:1px solid var(--lg-stroke,#fff);
+    box-shadow:0 30px 80px -20px rgba(0,0,0,.45);color:var(--lg-ink,#1d1424);font-family:"Prompt",sans-serif;max-height:86vh;overflow:auto}
+  #zpResult h5{font-weight:600;margin:0 0 8px}
+  #zpResult ul{padding-left:18px;margin:8px 0;font-size:13px}
+  #zpResult .zpr-f{display:flex;justify-content:flex-end;margin-top:14px}
+
+  /* โหมดกลางคืน: หน้าต่างจอง Zoom */
+  html[data-lg-theme="dark"] .zoom-dialog{background:#1e1830!important;color:var(--lg-ink)!important;border:1px solid var(--lg-line)!important}
+  html[data-lg-theme="dark"] .zoom-dialog :is(.zoom-dialog-head,.zoom-dialog-foot){background:#1e1830!important;color:var(--lg-ink)!important;border-color:var(--lg-line)!important}
+  html[data-lg-theme="dark"] .zoom-dialog .zoom-dialog-body{background:transparent!important;color:var(--lg-ink)!important}
+  html[data-lg-theme="dark"] .zoom-dialog label{color:var(--lg-ink)!important}
+  html[data-lg-theme="dark"] .zoom-account-choice{background:rgba(255,255,255,.05)!important;border-color:var(--lg-line)!important;color:var(--lg-ink)!important}
+  html[data-lg-theme="dark"] .zoom-account-choice.selected{border-color:var(--lg-brand)!important;box-shadow:0 0 0 2px var(--lg-ring)!important}
+  html[data-lg-theme="dark"] .zp-repeat{background:rgba(255,255,255,.04)}
+  html[data-lg-theme="dark"] .zp-seg button:not([aria-pressed="true"]),html[data-lg-theme="dark"] .zp-days button:not([aria-pressed="true"]),html[data-lg-theme="dark"] .zp-ic{background:rgba(255,255,255,.07);color:var(--lg-ink);border-color:var(--lg-line)}
+  html[data-lg-theme="dark"] .zp-summary{color:var(--lg-ink)}
+  html[data-lg-theme="dark"] .zp-note{color:var(--lg-ink);background:rgba(59,130,246,.14)}
+  html[data-lg-theme="dark"] .zp-day{color:var(--lg-ink)}
+  html[data-lg-theme="dark"] .zoom-readonly{background:rgba(255,255,255,.04)!important}
+  @media (max-width:560px){ .zp-list{grid-template-columns:1fr 1fr} .zp-kv{grid-template-columns:auto 1fr} .zp-kv .zp-btns{grid-column:1/-1} }
+}
+@media print{#zpResult{display:none!important}}
+</style>
+<script id="abcZoomPlusScriptV110">
+(function () {
+  'use strict';
+  if (window.__abcZoomPlusV110) return;
+  window.__abcZoomPlusV110 = true;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var TH_DAYS = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+  var TH_DAYS_FULL = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+  var TH_M = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  var MAX = 40;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function tok() { try { return typeof zoomToken === 'function' ? zoomToken() : (currentUser && currentUser.userV47Token) || ''; } catch (e) { return ''; } }
+  function call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (res, rej) {
+      var r = google.script.run.withSuccessHandler(res).withFailureHandler(function (e) { rej(new Error(e && e.message || e)); });
+      r[fn].apply(r, args);
+    });
+  }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function addDays(ymd, n) { var p = ymd.split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2] + n)).toISOString().slice(0, 10); }
+  function dow(ymd) { var p = ymd.split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay(); }
+  function diffDays(a, b) { return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 864e5); }
+  function thDate(ymd, withDay) { if (!ymd) return ''; var p = ymd.split('-').map(Number); return (withDay === false ? '' : TH_DAYS[dow(ymd)] + ' ') + p[2] + ' ' + TH_M[p[1] - 1] + ' ' + String(p[0] + 543).slice(-2); }
+  function isZoomAdmin() { try { return !!(zoomDashboardData && zoomDashboardData.isZoomAdmin); } catch (e) { return false; } }
+  function confirmBox(title, msg, ok) {
+    if (typeof abcConfirmV59 === 'function') return abcConfirmV59(title, msg, ok);
+    return Promise.resolve(window.confirm(title + '\n\n' + msg));
+  }
+
+  /* ================= ขยายวันที่ตามกฎ (เหมือนฝั่งเซิร์ฟเวอร์) ================= */
+  function expand(rule, start) {
+    var out = [], interval = Math.max(1, rule.interval || 1), count = Math.min(MAX, rule.endBy === 'count' ? (rule.count || 1) : MAX);
+    var until = rule.endBy === 'until' ? rule.until : null, limit = addDays(start, 366);
+    var push = function (d) { if (out.length < count && (!until || d <= until) && d <= limit) out.push(d); };
+    if (rule.freq === 'daily') {
+      for (var d = start, i = 0; out.length < count && d <= (until || limit) && i < 400; d = addDays(d, 1), i++) {
+        var w = dow(d); if (rule.skipWeekends && (w === 0 || w === 6)) continue; push(d);
+      }
+    } else if (rule.freq === 'weekly') {
+      var days = rule.weekdays && rule.weekdays.length ? rule.weekdays : [dow(start)], ws = addDays(start, -dow(start));
+      outer: for (var k = 0; out.length < count && k < 60; k += interval) {
+        for (var j = 0; j < 7; j++) {
+          var dd = addDays(ws, k * 7 + j);
+          if (dd < start || days.indexOf(j) < 0) continue;
+          if ((until && dd > until) || dd > limit) break outer;
+          push(dd);
+        }
+      }
+    } else if (rule.freq === 'monthly') {
+      var p = start.split('-').map(Number);
+      for (var m = 0; out.length < count && m < 24; m++) {
+        var y = p[0] + Math.floor((p[1] - 1 + m) / 12), mo = (p[1] - 1 + m) % 12 + 1, last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+        if (p[2] > last) continue;
+        var md = y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + p[2]).slice(-2);
+        if ((until && md > until) || md > limit) break;
+        push(md);
+      }
+    } else push(start);
+    return out;
+  }
+  function ruleText(rule, dates, st, en) {
+    var f = rule.freq === 'daily' ? (rule.skipWeekends ? 'ทุกวันทำการ (จ.–ศ.)' : 'ทุกวัน')
+      : rule.freq === 'weekly' ? (rule.interval === 2 ? 'ทุก 2 สัปดาห์ ' : 'ทุกสัปดาห์ ') + 'วัน' + (rule.weekdays || []).map(function (d) { return TH_DAYS_FULL[d]; }).join(', ')
+      : rule.freq === 'monthly' ? 'ทุกเดือน วันที่ ' + Number((dates[0] || '').slice(8)) : 'ครั้งเดียว';
+    return f + (st && en ? ' · ' + st + '–' + en + ' น.' : '');
+  }
+
+  /* ================= ฟอร์มจอง: ส่วน "จองซ้ำ" ================= */
+  var R = { freq: 'none', interval: 1, weekdays: [], skipWeekends: true, endBy: 'count', count: 8, until: '' };
+  var preview = null, previewKey = '';
+
+  function formBase() {
+    var v = function (id) { var e = $(id); return e ? String(e.value || '').trim() : ''; };
+    return { accountId: v('zoomAccountId'), phone: v('zoomBookerPhone'), topic: v('zoomTopic'), bookingDate: v('zoomBookingDate'),
+      startTime: v('zoomStartTime'), endTime: v('zoomEndTime'), purpose: v('zoomPurpose'), recording: v('zoomRecording') };
+  }
+  function currentRule() {
+    var r = JSON.parse(JSON.stringify(R));
+    if (r.freq === 'biweekly') { r.freq = 'weekly'; r.interval = 2; }
+    if (r.freq === 'weekly' && !r.weekdays.length) { var d = $('zoomBookingDate') && $('zoomBookingDate').value; if (d) r.weekdays = [dow(d)]; }
+    return r;
+  }
+  function serverRule(r) {
+    return { freq: r.freq, interval: r.interval, weekdays: r.weekdays, skipWeekends: r.skipWeekends,
+      until: r.endBy === 'until' ? r.until : '', count: r.endBy === 'count' ? r.count : MAX };
+  }
+  function keyNow() { var b = formBase(); return JSON.stringify([b.accountId, b.bookingDate, b.startTime, b.endTime, currentRule()]); }
+
+  function buildRepeatUI() {
+    if ($('zpRepeat')) return;
+    var startSel = $('zoomStartTime'); if (!startSel) return;
+    var row = startSel.closest('.row'); if (!row) return;
+    var box = document.createElement('div');
+    box.id = 'zpRepeat'; box.className = 'zp-repeat';
+    box.innerHTML =
+      '<h6>3. 🔁 จองซ้ำ (ไม่บังคับ)</h6><p class="zp-sub">ใช้ Account และเวลาเดียวกันกับข้างบน · ระบบตรวจเวลาว่างให้ทุกวันก่อนจอง</p>' +
+      '<div class="zp-seg" role="group" aria-label="ความถี่">' +
+      [['none', 'ไม่ซ้ำ'], ['daily', 'ทุกวัน'], ['weekly', 'ทุกสัปดาห์'], ['biweekly', 'ทุก 2 สัปดาห์'], ['monthly', 'ทุกเดือน']].map(function (x) {
+        return '<button type="button" data-f="' + x[0] + '" aria-pressed="false">' + x[1] + '</button>';
+      }).join('') + '</div>' +
+      '<div id="zpOpts" hidden>' +
+      '<div class="zp-row" id="zpDaysRow"><label>วันที่ต้องการ</label><div class="zp-days" role="group" aria-label="เลือกวันในสัปดาห์">' +
+      TH_DAYS.map(function (d, i) { return '<button type="button" data-d="' + i + '" aria-pressed="false" title="วัน' + TH_DAYS_FULL[i] + '">' + d + '</button>'; }).join('') + '</div></div>' +
+      '<div class="zp-row" id="zpWkRow"><label class="form-check-label"><input type="checkbox" id="zpSkipWk" class="form-check-input me-1" checked> ข้ามวันเสาร์–อาทิตย์</label></div>' +
+      '<div class="zp-row"><label>สิ้นสุด</label><div class="zp-end">' +
+      '<label><input type="radio" name="zpEnd" value="count" checked> จำนวน <input type="number" id="zpCount" class="form-control form-control-sm" min="2" max="' + MAX + '" value="8"> ครั้ง</label>' +
+      '<label><input type="radio" name="zpEnd" value="until"> จนถึงวันที่ <input type="date" id="zpUntil" class="form-control form-control-sm"></label>' +
+      '</div></div>' +
+      '<div class="zp-summary" id="zpSummary" aria-live="polite"></div>' +
+      '<div class="zp-check"><button type="button" class="btn btn-outline-primary btn-sm" id="zpCheckBtn">🔎 ตรวจสอบเวลาว่างทุกวัน</button><span class="zp-count" id="zpCount2"></span></div>' +
+      '<div class="zp-list" id="zpList"></div></div>';
+    row.parentNode.insertBefore(box, row.nextSibling);
+
+    box.querySelectorAll('.zp-seg button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        R.freq = b.dataset.f; R.interval = R.freq === 'biweekly' ? 2 : 1;
+        if ((R.freq === 'weekly' || R.freq === 'biweekly') && !R.weekdays.length) { var d = $('zoomBookingDate').value; if (d) R.weekdays = [dow(d)]; }
+        refresh();
+      });
+    });
+    box.querySelectorAll('.zp-days button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var d = Number(b.dataset.d), i = R.weekdays.indexOf(d);
+        if (i >= 0) { if (R.weekdays.length > 1) R.weekdays.splice(i, 1); } else R.weekdays.push(d);
+        R.weekdays.sort(); refresh();
+      });
+    });
+    $('zpSkipWk').addEventListener('change', function () { R.skipWeekends = this.checked; refresh(); });
+    box.querySelectorAll('input[name=zpEnd]').forEach(function (r) { r.addEventListener('change', function () { R.endBy = this.value; refresh(); }); });
+    $('zpCount').addEventListener('input', function () { R.count = Math.max(2, Math.min(MAX, Number(this.value) || 2)); R.endBy = 'count'; box.querySelector('input[value=count]').checked = true; refresh(); });
+    $('zpUntil').addEventListener('change', function () { R.until = this.value; R.endBy = 'until'; box.querySelector('input[value=until]').checked = true; refresh(); });
+    $('zpCheckBtn').addEventListener('click', runPreview);
+    ['zoomBookingDate', 'zoomStartTime', 'zoomEndTime', 'zoomAccountId'].forEach(function (id) { var e = $(id); if (e) e.addEventListener('change', refresh); });
+
+    // แทนปุ่มดูรหัสก่อนจอง ด้วยคำอธิบาย
+    var old = $('zoomSelectedPasswordBox');
+    if (old && !$('zpPwNote')) {
+      var n = document.createElement('div'); n.id = 'zpPwNote'; n.className = 'zp-note';
+      n.innerHTML = '<span aria-hidden="true">🔑</span><span><b>Username / Password ของ Zoom</b> จะแสดงในเมนู <b>“การจองของฉัน”</b> ทั้งวัน ในวันที่ใช้งาน</span>';
+      old.parentNode.insertBefore(n, old);
+    }
+  }
+
+  function selectedDates() {
+    if (!preview) return [];
+    return preview.filter(function (r) { return r.ok && r.on !== false; }).map(function (r) { return r.date; });
+  }
+  function updateSaveBtn() {
+    var btn = $('zoomSaveBtn'); if (!btn) return;
+    if (!btn.dataset.zpOrig) btn.dataset.zpOrig = btn.textContent;
+    var editing = $('zoomBookingId') && $('zoomBookingId').value;
+    if (R.freq === 'none' || editing) { btn.textContent = btn.dataset.zpOrig; return; }
+    var n = preview && previewKey === keyNow() ? selectedDates().length : 0;
+    btn.textContent = n ? 'จอง ' + n + ' ครั้ง' : 'ตรวจเวลาว่าง แล้วจอง';
+  }
+
+  function refresh() {
+    var box = $('zpRepeat'); if (!box) return;
+    var editing = $('zoomBookingId') && $('zoomBookingId').value;
+    box.hidden = !!editing;
+    box.querySelectorAll('.zp-seg button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.f === R.freq ? 'true' : 'false'); });
+    var on = R.freq !== 'none';
+    $('zpOpts').hidden = !on;
+    var weekly = R.freq === 'weekly' || R.freq === 'biweekly';
+    $('zpDaysRow').hidden = !weekly;
+    $('zpWkRow').hidden = R.freq !== 'daily';
+    box.querySelectorAll('.zp-days button').forEach(function (b) { b.setAttribute('aria-pressed', R.weekdays.indexOf(Number(b.dataset.d)) >= 0 ? 'true' : 'false'); });
+    if (on) {
+      var b = formBase(), r = currentRule();
+      var s = $('zpSummary');
+      if (!b.bookingDate || !b.startTime || !b.endTime) {
+        s.innerHTML = 'เลือก <b>วันที่ · Account · เวลาเริ่ม–สิ้นสุด</b> ข้างบนก่อน แล้วระบบจะสรุปวันที่จองให้';
+      } else {
+        var dates = expand(r, b.bookingDate);
+        s.innerHTML = '🗓️ จะจอง <b>' + dates.length + ' ครั้ง</b> · ' + esc(ruleText(r, dates, b.startTime, b.endTime)) +
+          (dates.length ? '<br>ตั้งแต่ <b>' + thDate(dates[0]) + '</b> ถึง <b>' + thDate(dates[dates.length - 1]) + '</b>' : '') +
+          (dates.length >= MAX ? '<br><small>จองได้สูงสุดครั้งละ ' + MAX + ' ครั้ง</small>' : '');
+      }
+      if (previewKey !== keyNow()) { preview = null; $('zpList').innerHTML = ''; $('zpCount2').textContent = ''; }
+    }
+    updateSaveBtn();
+  }
+
+  function renderPreview() {
+    var list = $('zpList'); if (!list || !preview) return;
+    list.innerHTML = preview.map(function (r, i) {
+      return '<label class="zp-day' + (r.ok ? (r.on === false ? ' off' : '') : ' bad') + '">' +
+        '<input type="checkbox" data-i="' + i + '"' + (r.ok ? (r.on === false ? '' : ' checked') : ' disabled') + '>' +
+        '<span>' + (r.ok ? '✅ ' : '⛔ ') + thDate(r.date) + '<small>' + (r.ok ? 'ว่าง' : esc(r.reason || 'ไม่ว่าง')) + '</small></span></label>';
+    }).join('');
+    list.querySelectorAll('input[type=checkbox]').forEach(function (c) {
+      c.addEventListener('change', function () { preview[Number(c.dataset.i)].on = c.checked; renderPreview(); });
+    });
+    var ok = preview.filter(function (r) { return r.ok; }).length, sel = selectedDates().length, bad = preview.length - ok;
+    $('zpCount2').textContent = 'ว่าง ' + ok + ' / ' + preview.length + ' วัน' + (bad ? ' · วันที่ไม่ว่างจะถูกข้าม' : '') + ' · เลือกไว้ ' + sel + ' วัน (คลิกเพื่อเอาออก)';
+    updateSaveBtn();
+  }
+
+  function runPreview() {
+    var b = formBase();
+    if (!b.accountId || !b.bookingDate || !b.startTime || !b.endTime) { alert('กรุณาเลือกวันที่ Account และเวลาเริ่ม–สิ้นสุดก่อน'); return Promise.resolve(false); }
+    var btn = $('zpCheckBtn'), k = keyNow();
+    btn.disabled = true; btn.textContent = '⏳ กำลังตรวจสอบ…';
+    $('zpList').innerHTML = '<div class="zp-count">กำลังตรวจเวลาว่างทีละวัน อาจใช้เวลา 10–30 วินาที…</div>';
+    var full = Object.assign({}, b, { phone: b.phone || '-', topic: b.topic || '-', purpose: b.purpose || '-', recording: b.recording || '-' });
+    return call('previewZoomRecurringV110', tok(), full, serverRule(currentRule()))
+      .then(function (r) {
+        if (!r || !r.success) throw new Error(r && r.message || 'ตรวจสอบไม่สำเร็จ');
+        preview = r.rows; previewKey = k; renderPreview(); return true;
+      })
+      .catch(function (e) { $('zpList').innerHTML = '<div class="text-danger small">' + esc(e.message) + '</div>'; return false; })
+      .finally(function () { btn.disabled = false; btn.textContent = '🔎 ตรวจสอบเวลาว่างอีกครั้ง'; });
+  }
+
+  function showResult(html) {
+    var w = $('zpResult');
+    if (!w) {
+      w = document.createElement('div'); w.id = 'zpResult'; w.className = 'no-print'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true');
+      document.body.appendChild(w);
+      w.addEventListener('click', function (e) { if (e.target === w || e.target.dataset.close) w.hidden = true; });
+    }
+    w.innerHTML = '<div class="zpr">' + html + '<div class="zpr-f"><button type="button" class="btn btn-primary" data-close="1">ตกลง</button></div></div>';
+    w.hidden = false;
+  }
+
+  /* ส่งฟอร์ม: จองซ้ำ → createZoomRecurringV110 · ไม่ซ้ำ/แก้ไข → ระบบเดิม */
+  if (typeof submitZoomBooking === 'function' && !submitZoomBooking.__zp110) {
+    var origSubmit = submitZoomBooking;
+    var wrappedSubmit = async function (event) {
+      var editing = $('zoomBookingId') && $('zoomBookingId').value;
+      if (R.freq === 'none' || editing) return origSubmit.apply(this, arguments);
+      event.preventDefault();
+      var b = formBase();
+      if (!b.phone) return alert('กรุณากรอกเบอร์โทรศัพท์ผู้จอง');
+      if (!b.accountId) return alert('กรุณาเลือก Zoom Account');
+      if (!b.topic || !b.bookingDate || !b.startTime || !b.endTime) return alert('กรุณากรอกข้อมูลการจองให้ครบ');
+      if (!b.purpose || !b.recording) return alert('กรุณาเลือกวัตถุประสงค์และ Recording');
+      if (!preview || previewKey !== keyNow()) { var ok = await runPreview(); if (!ok) return; }
+      var dates = selectedDates();
+      if (!dates.length) return alert('ไม่มีวันที่ว่างให้จอง ลองเปลี่ยน Account หรือเวลา');
+      var r = currentRule(), text = ruleText(r, dates, b.startTime, b.endTime);
+      var yes = await confirmBox('ยืนยันการจองซ้ำ', 'จอง ' + dates.length + ' ครั้ง · ' + text + '\n' + thDate(dates[0]) + ' – ' + thDate(dates[dates.length - 1]) + '\nAccount ' + b.accountId, 'ยืนยันจอง ' + dates.length + ' ครั้ง');
+      if (!yes) return;
+      var btn = $('zoomSaveBtn'); btn.disabled = true; btn.textContent = '⏳ กำลังจอง ' + dates.length + ' ครั้ง…';
+      try {
+        var res = await call('createZoomRecurringV110', tok(), b, dates, text + ' · ' + dates.length + ' ครั้ง', serverRule(r));
+        if (!res || !res.success) throw new Error(res && res.message || 'จองไม่สำเร็จ');
+        var fails = res.failed || [];
+        showResult('<h5>' + (fails.length ? '⚠️' : '✅') + ' จองสำเร็จ ' + res.created + ' ครั้ง' + (fails.length ? ' · ไม่สำเร็จ ' + fails.length + ' ครั้ง' : '') + '</h5>' +
+          '<div class="small">' + esc(b.topic) + '<br>' + esc(text) + ' · Account ' + esc(b.accountId) + '</div>' +
+          (fails.length ? '<ul>' + fails.map(function (f) { return '<li>' + thDate(f.date) + ' — ' + esc(f.message) + '</li>'; }).join('') + '</ul>' : '') +
+          '<div class="zp-note"><span>🔑</span><span>Username / Password จะแสดงใน <b>“การจองของฉัน”</b> ทั้งวัน ในแต่ละวันที่ใช้งาน' +
+          (res.seriesId ? ' · ยกเลิกทั้งชุดได้ที่ “การจองของฉัน”' : '') + '</span></div>');
+        R.freq = 'none'; preview = null; previewKey = '';
+        if (typeof closeZoomBookingForm === 'function') closeZoomBookingForm();
+        if (typeof loadZoomDashboard === 'function') await loadZoomDashboard();
+        if (typeof loadMyZoomBookings === 'function' && typeof zoomCurrentTab !== 'undefined' && zoomCurrentTab === 'mine') await loadMyZoomBookings();
+      } catch (e) {
+        alert('ไม่สามารถจองซ้ำได้: ' + e.message);
+      } finally { btn.disabled = false; refresh(); }
+    };
+    wrappedSubmit.__zp110 = true;
+    submitZoomBooking = wrappedSubmit;
+  }
+
+  if (typeof openZoomBookingForm === 'function' && !openZoomBookingForm.__zp110) {
+    var origOpen = openZoomBookingForm;
+    var wrappedOpen = function () {
+      var r = origOpen.apply(this, arguments);
+      buildRepeatUI();
+      R = { freq: 'none', interval: 1, weekdays: [], skipWeekends: true, endBy: 'count', count: 8, until: '' };
+      preview = null; previewKey = '';
+      if ($('zpCount')) $('zpCount').value = 8;
+      if ($('zpUntil')) { $('zpUntil').value = ''; $('zpUntil').min = today(); }
+      if ($('zpSkipWk')) $('zpSkipWk').checked = true;
+      var rr = document.querySelector('#zpRepeat input[value=count]'); if (rr) rr.checked = true;
+      refresh();
+      return r;
+    };
+    wrappedOpen.__zp110 = true;
+    openZoomBookingForm = wrappedOpen;
+  }
+
+  /* ================= ข้อมูลเข้าใช้ Zoom ในรายการจอง ================= */
+  var seriesMap = {}, seriesList = [];
+  function findBooking(id) {
+    var all = [];
+    try { all = all.concat(zoomMyBookings || []); } catch (e) {}
+    try { all = all.concat(zoomAdminBookings || []); } catch (e) {}
+    try { all = all.concat((zoomDashboardData && zoomDashboardData.bookings) || []); } catch (e) {}
+    return all.filter(function (b) { return String(b.bookingId) === String(id); })[0];
+  }
+
+  function credHTML(b) {
+    var t = today(), d = b.bookingDate, admin = isZoomAdmin();
+    var id = esc(b.bookingId);
+    if (!admin && d > t) {
+      var n = diffDays(t, d);
+      return '<div class="zp-cred lock" data-zp="' + id + '">🔒 Username / Password เปิดให้ดู <b>' + thDate(d) + '</b> ' + (n === 1 ? '(พรุ่งนี้)' : '(อีก ' + n + ' วัน)') + '</div>';
+    }
+    if (!admin && d < t) return '';
+    return '<div class="zp-cred' + (d === t ? ' today' : '') + '" data-zp="' + id + '">' +
+      '<div class="zp-h">🔑 ข้อมูลเข้าใช้ Zoom' + (d === t ? ' · วันนี้ ' + esc(b.startTime) + '–' + esc(b.endTime) + ' น.' : ' (ผู้ดูแล)') + '</div>' +
+      '<div class="zp-body"><button type="button" class="zp-open" data-zp-load="' + id + '">แสดง Username / Password</button></div></div>';
+  }
+
+  function copy(text, btn) {
+    var done = function () { var o = btn.textContent; btn.textContent = '✓'; setTimeout(function () { btn.textContent = o; }, 1200); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+    else fallback();
+    function fallback() { var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+  }
+
+  var hideTimers = {};
+  function loadCred(id, holder) {
+    var body = holder.querySelector('.zp-body');
+    body.innerHTML = '<span class="zp-count">กำลังโหลด…</span>';
+    call('getZoomAccessV110', tok(), id).then(function (r) {
+      if (!r || !r.success) throw new Error(r && r.message || 'โหลดไม่สำเร็จ');
+      if (!r.allowed) { body.innerHTML = r.reason === 'before' ? '🔒 เปิดให้ดู ' + thDate(r.opensAt) : 'การใช้งานผ่านไปแล้ว'; return; }
+      body.innerHTML = '<div class="zp-kv">' +
+        '<span class="k">Username</span><code>' + esc(r.username || '-') + '</code><span class="zp-btns"><button type="button" class="zp-ic" data-c="u" title="คัดลอก Username" aria-label="คัดลอก Username">📋</button></span>' +
+        '<span class="k">Password</span><code class="zp-pw" data-v="' + esc(r.password) + '">••••••••</code><span class="zp-btns">' +
+        '<button type="button" class="zp-ic" data-c="eye" title="แสดง/ซ่อนรหัสผ่าน" aria-label="แสดงรหัสผ่าน">👁️</button>' +
+        '<button type="button" class="zp-ic" data-c="p" title="คัดลอก Password" aria-label="คัดลอก Password">📋</button></span></div>' +
+        '<div class="zp-go"><a href="https://zoom.us/signin" target="_blank" rel="noopener">เปิด zoom.us เพื่อเข้าสู่ระบบ ↗</a> · Account ' + esc(r.accountId) + '</div>';
+      var pw = body.querySelector('.zp-pw');
+      body.querySelector('[data-c=u]').onclick = function () { copy(r.username || '', this); };
+      body.querySelector('[data-c=p]').onclick = function () { copy(r.password || '', this); };
+      body.querySelector('[data-c=eye]').onclick = function () {
+        var show = pw.textContent.indexOf('•') === 0;
+        pw.textContent = show ? r.password : '••••••••'; this.textContent = show ? '🙈' : '👁️';
+        clearTimeout(hideTimers[id]);
+        if (show) { var me = this; hideTimers[id] = setTimeout(function () { pw.textContent = '••••••••'; me.textContent = '👁️'; }, 60000); }
+      };
+    }).catch(function (e) { body.innerHTML = '<span class="text-danger small">' + esc(e.message) + '</span>'; });
+  }
+
+  function enhance(panel) {
+    if (!panel || panel.__zpBusy) return;
+    panel.__zpBusy = true;
+    try {
+      var rows = panel.querySelectorAll('.zoom-list-row');
+      var todayList = [];
+      rows.forEach(function (row) {
+        if (row.dataset.zp110) return;
+        row.dataset.zp110 = '1';
+        var box = row.querySelector('.zoom-password-box');
+        var idEl = row.querySelector('[id^="zoomPassword-"]');
+        var id = idEl ? idEl.id.replace('zoomPassword-', '') : '';
+        if (!id) { var eb = row.querySelector('[onclick*="editZoomBooking"]'); var m = eb && eb.getAttribute('onclick').match(/editZoomBooking\('([^']+)'/); if (m) id = m[1]; }
+        var b = id && findBooking(id);
+        if (box) {
+          var html = b ? credHTML(b) : '';
+          if (html) box.outerHTML = html; else box.remove();
+        }
+        if (b && seriesMap[id]) {
+          var s = seriesMap[id], idx = s.booking_ids.indexOf(String(id));
+          var info = row.querySelector('.small.text-muted');
+          var badge = document.createElement('div'); badge.className = 'zp-badge';
+          badge.textContent = '🔁 ' + (s.rule_text || 'จองซ้ำ') + (idx >= 0 ? ' · ครั้งที่ ' + (idx + 1) + '/' + s.booking_ids.length : '');
+          (info && info.parentNode ? info.parentNode : row).appendChild(badge);
+        }
+        if (b && b.bookingDate === today() && String(b.status || '').toUpperCase() !== 'CANCELLED') todayList.push(b);
+      });
+      panel.querySelectorAll('[data-zp-load]').forEach(function (btn) {
+        if (btn.__zp) return; btn.__zp = true;
+        btn.addEventListener('click', function () { loadCred(btn.dataset.zpLoad, btn.closest('.zp-cred')); });
+      });
+      if (panel.id === 'zoomMinePanel') topCards(panel, todayList);
+    } finally { panel.__zpBusy = false; }
+  }
+
+  function topCards(panel, todayList) {
+    var host = panel.querySelector('.zoom-panel'); if (!host) return;
+    var old = panel.querySelectorAll('.zp-today,.zp-series'); old.forEach(function (x) { x.remove(); });
+    if (todayList.length) {
+      var t = document.createElement('div'); t.className = 'zp-today';
+      t.innerHTML = '<div><b>📅 วันนี้คุณมีการจอง Zoom ' + todayList.length + ' รายการ</b><div class="small">' +
+        todayList.map(function (b) { return esc(b.startTime) + '–' + esc(b.endTime) + ' · ' + esc(b.accountId); }).join(' | ') + '</div></div>' +
+        '<button type="button" class="zp-open">ดู Username / Password ↓</button>';
+      t.querySelector('button').onclick = function () {
+        var c = panel.querySelector('.zp-cred.today'); if (!c) return;
+        c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var l = c.querySelector('[data-zp-load]'); if (l) l.click();
+      };
+      host.parentNode.insertBefore(t, host);
+    }
+    var active = seriesList.filter(function (s) { return (s.dates || []).some(function (d) { return d >= today(); }); });
+    if (active.length) {
+      var s = document.createElement('div'); s.className = 'zp-series';
+      s.innerHTML = '<h6>🔁 ชุดการจองซ้ำของฉัน</h6>' + active.map(function (x) {
+        var left = (x.dates || []).filter(function (d) { return d >= today(); }).length;
+        return '<div class="zp-srow"><div>' + esc(x.topic) + '<small>' + esc(x.rule_text || '') + ' · เหลือ ' + left + ' ครั้ง · Account ' + esc(x.account_id) + '</small></div>' +
+          '<button type="button" class="btn btn-sm btn-outline-danger" data-sid="' + esc(x.id) + '" data-left="' + left + '">ยกเลิกทั้งชุด (' + left + ' ครั้ง)</button></div>';
+      }).join('');
+      s.querySelectorAll('[data-sid]').forEach(function (btn) {
+        btn.onclick = async function () {
+          var yes = await confirmBox('ยกเลิกทั้งชุด', 'ยกเลิกการจองที่ยังไม่ถึงทั้งหมด ' + btn.dataset.left + ' ครั้ง?\n(ครั้งที่ผ่านไปแล้วจะไม่ถูกเปลี่ยน)', 'ยืนยันยกเลิกทั้งชุด');
+          if (!yes) return;
+          btn.disabled = true; btn.textContent = '⏳ กำลังยกเลิก…';
+          try {
+            var r = await call('cancelZoomSeriesV110', tok(), btn.dataset.sid);
+            if (!r || !r.success) throw new Error(r && r.message || 'ยกเลิกไม่สำเร็จ');
+            alert('ยกเลิกแล้ว ' + r.cancelled + ' ครั้ง' + (r.failed && r.failed.length ? '\nไม่สำเร็จ: ' + r.failed.join(', ') : ''));
+            if (typeof loadZoomDashboard === 'function') loadZoomDashboard();
+            if (typeof loadMyZoomBookings === 'function') loadMyZoomBookings();
+          } catch (e) { alert(e.message); btn.disabled = false; }
+        };
+      });
+      host.parentNode.insertBefore(s, host);
+    }
+  }
+
+  function loadSeries() {
+    return call('getMyZoomSeriesV110', tok()).then(function (r) {
+      seriesList = (r && r.success && r.series) || []; seriesMap = {};
+      seriesList.forEach(function (s) { (s.booking_ids || []).forEach(function (id) { if (id) seriesMap[String(id)] = s; }); });
+    }).catch(function () { seriesList = []; seriesMap = {}; });
+  }
+
+  ['zoomMinePanel', 'zoomAdminPanel'].forEach(function (pid) {
+    var p = $(pid); if (!p) return;
+    new MutationObserver(function () {
+      if (!p.querySelector('.zoom-list-row') || p.querySelector('.zoom-list-row[data-zp110]')) return;
+      if (pid === 'zoomMinePanel') loadSeries().then(function () { enhance(p); }); else enhance(p);
+    }).observe(p, { childList: true, subtree: true });
+  });
+
+  /* ปุ่ม 👁️ เดิม (ถ้ายังมีที่ใด) → ใช้ระบบใหม่ */
+  window.toggleZoomPassword = function (id) {
+    var row = document.getElementById('zoomPassword-' + id);
+    var holder = row && row.closest('.zoom-list-row');
+    if (holder) enhance(holder.closest('#zoomMinePanel,#zoomAdminPanel'));
+  };
+
+  console.log('[ZOOM PLUS V110] พร้อมใช้งาน');
+})();
+</script>
+<!-- ========================= END ZOOM PLUS V110 ========================= -->
 
 </body>
 
