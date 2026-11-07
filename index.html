@@ -33580,7 +33580,7 @@ if(typeof buildFundPrintV35==='function'){
   window.addEventListener('beforeprint', clearZoom);
   window.addEventListener('afterprint', later);
 
-  window.ABC_BUILD = 'V110 (2026-11-07)';
+  window.ABC_BUILD = 'V111 (2026-11-07)';
   console.log('[A4 FIT ALL V107] พร้อมใช้งาน · build ' + window.ABC_BUILD);
 })();
 </script>
@@ -34562,6 +34562,36 @@ if(typeof buildFundPrintV35==='function'){
     openZoomBookingForm = wrappedOpen;
   }
 
+
+  /* ================= ยกเลิกการจอง (V111): เจ้าของ หรือ แอดมิน ================= */
+  function isAdminUser() { try { return isZoomAdmin() || /admin/i.test(String(currentUser.role || currentUser.Role || '')); } catch (e) { return isZoomAdmin(); } }
+  function nowMin() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+  function toMin(t) { var m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : 0; }
+  function ended(b) { var t = today(); return b.bookingDate < t || (b.bookingDate === t && nowMin() >= toMin(b.endTime === '23:59' ? '24:00' : b.endTime)); }
+  function canCancel(b, inMine) {
+    if (!b || String(b.status || '').toUpperCase() === 'CANCELLED') return false;
+    if (isAdminUser()) return true;
+    return !!inMine && !ended(b);
+  }
+  window.cancelZoomBookingUI = async function (id) {
+    var b = findBooking(id);
+    var mineList = []; try { mineList = zoomMyBookings || []; } catch (e) {}
+    var own = mineList.some(function (x) { return String(x.bookingId) === String(id); });
+    var detail = b ? '“' + (b.topic || '-') + '”\n' + thDate(b.bookingDate) + ' · ' + b.startTime + '–' + b.endTime + ' น. · ' + b.accountId +
+      (!own && b.fullName ? '\nผู้จอง: ' + b.fullName : '') : '';
+    var title = own ? 'ยกเลิกการจองของฉัน' : 'ยกเลิกการจองของผู้อื่น (แอดมิน)';
+    var yes = await confirmBox(title, detail + '\n\nยืนยันการยกเลิก? ' + (own ? '' : 'ผู้จองจะเห็นสถานะ CANCELLED'), 'ยืนยันการยกเลิก');
+    if (!yes) return;
+    try {
+      var r = await call('cancelZoomBookingV111', tok(), id);
+      if (!r || !r.success) throw new Error(r && r.message || 'ยกเลิกไม่สำเร็จ');
+      alert(r.message || 'ยกเลิกแล้ว');
+      if (typeof loadZoomDashboard === 'function') await loadZoomDashboard();
+      try { if (zoomCurrentTab === 'mine' && typeof loadMyZoomBookings === 'function') await loadMyZoomBookings(); } catch (e) {}
+      try { if (zoomCurrentTab === 'admin' && typeof loadZoomAdmin === 'function') await loadZoomAdmin(); } catch (e) {}
+    } catch (e) { alert('ยกเลิกไม่สำเร็จ: ' + e.message); }
+  };
+
   /* ================= ข้อมูลเข้าใช้ Zoom ในรายการจอง ================= */
   var seriesMap = {}, seriesList = [];
   function findBooking(id) {
@@ -34654,6 +34684,18 @@ if(typeof buildFundPrintV35==='function'){
           var badge = document.createElement('div'); badge.className = 'zp-badge';
           badge.textContent = '🔁 ' + (s.rule_text || 'จองซ้ำ') + (idx >= 0 ? ' · ครั้งที่ ' + (idx + 1) + '/' + s.booking_ids.length : '');
           (info && info.parentNode ? info.parentNode : row).appendChild(badge);
+        }
+        // ปุ่มยกเลิก: เจ้าของ (ยังไม่สิ้นสุด) หรือแอดมิน · ซ่อนปุ่มเดิมถ้าไม่มีสิทธิ์
+        var right = row.querySelector('.d-flex.gap-2.align-items-start');
+        var oldCancel = row.querySelector('[onclick*="cancelZoomBookingUI"]');
+        var allowed = b && canCancel(b, panel.id === 'zoomMinePanel');
+        if (oldCancel && !allowed) oldCancel.remove();
+        if (!oldCancel && allowed && right && id) {
+          var cb = document.createElement('button');
+          cb.type = 'button'; cb.className = 'btn btn-sm btn-outline-danger';
+          cb.textContent = panel.id === 'zoomMinePanel' ? 'ยกเลิก' : 'ยกเลิก (แอดมิน)';
+          cb.addEventListener('click', function () { window.cancelZoomBookingUI(id); });
+          right.appendChild(cb);
         }
         if (active && b.bookingDate === today()) todayList.push(b);
       });
