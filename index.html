@@ -34617,23 +34617,36 @@ if(typeof buildFundPrintV35==='function'){
     }).catch(function (e) { body.innerHTML = '<span class="text-danger small">' + esc(e.message) + '</span>'; });
   }
 
+  function panelList(panel) {
+    try { if (panel.id === 'zoomMinePanel') return zoomMyBookings || []; } catch (e) {}
+    try { if (panel.id === 'zoomAdminPanel') return zoomAdminBookings || []; } catch (e) {}
+    return [];
+  }
+
   function enhance(panel) {
     if (!panel || panel.__zpBusy) return;
     panel.__zpBusy = true;
     try {
       var rows = panel.querySelectorAll('.zoom-list-row');
+      var list = panelList(panel);
+      var byIndex = list.length === rows.length;          // แถวเรียงตามลำดับรายการเสมอ
       var todayList = [];
-      rows.forEach(function (row) {
+      rows.forEach(function (row, i) {
         if (row.dataset.zp110) return;
         row.dataset.zp110 = '1';
         var box = row.querySelector('.zoom-password-box');
         var idEl = row.querySelector('[id^="zoomPassword-"]');
         var id = idEl ? idEl.id.replace('zoomPassword-', '') : '';
-        if (!id) { var eb = row.querySelector('[onclick*="editZoomBooking"]'); var m = eb && eb.getAttribute('onclick').match(/editZoomBooking\('([^']+)'/); if (m) id = m[1]; }
-        var b = id && findBooking(id);
-        if (box) {
-          var html = b ? credHTML(b) : '';
-          if (html) box.outerHTML = html; else box.remove();
+        if (!id) { var eb = row.querySelector('[onclick*="ZoomBooking"]'); var m = eb && eb.getAttribute('onclick').match(/ZoomBooking(?:UI)?\('([^']+)'/); if (m) id = m[1]; }
+        var b = (id && findBooking(id)) || (byIndex ? list[i] : null);
+        if (b && !id) id = String(b.bookingId);
+        var active = b && String(b.status || '').toUpperCase() !== 'CANCELLED';
+        var html = active ? credHTML(b) : '';
+        if (box) { if (html) box.outerHTML = html; else box.remove(); }
+        else if (html) {
+          // การจองที่ระบบเดิมไม่แสดงช่องรหัส (เช่น canManage = false) → เพิ่มการ์ดใต้รายละเอียด
+          var left = row.querySelector('.d-flex > div') || row;
+          left.insertAdjacentHTML('beforeend', html);
         }
         if (b && seriesMap[id]) {
           var s = seriesMap[id], idx = s.booking_ids.indexOf(String(id));
@@ -34642,11 +34655,13 @@ if(typeof buildFundPrintV35==='function'){
           badge.textContent = '🔁 ' + (s.rule_text || 'จองซ้ำ') + (idx >= 0 ? ' · ครั้งที่ ' + (idx + 1) + '/' + s.booking_ids.length : '');
           (info && info.parentNode ? info.parentNode : row).appendChild(badge);
         }
-        if (b && b.bookingDate === today() && String(b.status || '').toUpperCase() !== 'CANCELLED') todayList.push(b);
+        if (active && b.bookingDate === today()) todayList.push(b);
       });
       panel.querySelectorAll('[data-zp-load]').forEach(function (btn) {
         if (btn.__zp) return; btn.__zp = true;
         btn.addEventListener('click', function () { loadCred(btn.dataset.zpLoad, btn.closest('.zp-cred')); });
+        // การจองของวันนี้ (ในรายการของฉัน) → โหลดให้เลย รหัสผ่านยังซ่อนจนกด 👁️
+        if (panel.id === 'zoomMinePanel' && btn.closest('.zp-cred.today')) loadCred(btn.dataset.zpLoad, btn.closest('.zp-cred'));
       });
       if (panel.id === 'zoomMinePanel') topCards(panel, todayList);
     } finally { panel.__zpBusy = false; }
@@ -34659,11 +34674,12 @@ if(typeof buildFundPrintV35==='function'){
       var t = document.createElement('div'); t.className = 'zp-today';
       t.innerHTML = '<div><b>📅 วันนี้คุณมีการจอง Zoom ' + todayList.length + ' รายการ</b><div class="small">' +
         todayList.map(function (b) { return esc(b.startTime) + '–' + esc(b.endTime) + ' · ' + esc(b.accountId); }).join(' | ') + '</div></div>' +
-        '<button type="button" class="zp-open">ดู Username / Password ↓</button>';
+        '<button type="button" class="zp-open">ไปที่ Username / Password ↓</button>';
       t.querySelector('button').onclick = function () {
         var c = panel.querySelector('.zp-cred.today'); if (!c) return;
         c.scrollIntoView({ behavior: 'smooth', block: 'center' });
         var l = c.querySelector('[data-zp-load]'); if (l) l.click();
+        c.animate && c.animate([{ boxShadow: '0 0 0 0 rgba(16,185,129,.6)' }, { boxShadow: '0 0 0 10px rgba(16,185,129,0)' }], { duration: 900 });
       };
       host.parentNode.insertBefore(t, host);
     }
